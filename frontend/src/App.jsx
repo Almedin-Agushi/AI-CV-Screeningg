@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
-import Dashboard from "./page/dashboard";
+import Dashboard from "./page/Dashboard";
 import CreateJob from "./page/CreateJob";
 import UploadCV from "./page/UploadCV";
 import Candidates from "./page/Candidates";
