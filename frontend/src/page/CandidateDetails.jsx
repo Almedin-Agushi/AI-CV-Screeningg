@@ -11,9 +11,10 @@ function CandidateDetails() {
   useEffect(() => {
     const loadCandidate = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/candidates"
-        );
+       const response = await fetch(
+  `${import.meta.env.VITE_API_URL}/api/candidates`
+);
+
 
         const data = await response.json();
 
