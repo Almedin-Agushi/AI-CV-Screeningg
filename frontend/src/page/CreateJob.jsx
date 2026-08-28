@@ -39,7 +39,7 @@ function CreateJob() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/jobs",
+        `${import.meta.env.VITE_API_URL}/api/jobs`,
         {
           method: "POST",
           headers: {
@@ -48,7 +48,6 @@ function CreateJob() {
           body: JSON.stringify(jobData),
         }
       );
-
       const data = await response.json();
 
       if (!response.ok) {
