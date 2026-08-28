@@ -65,6 +65,36 @@ const upload = multer({
   },
 });
 
+
+// =====================================================
+// ACTIVE JOB
+// =====================================================
+
+let activeJobCriteria = {
+  jobTitle: "Frontend Developer",
+
+  requiredSkills: [
+    "HTML",
+    "CSS",
+    "JavaScript",
+    "React",
+  ],
+
+  minimumExperience: 1,
+
+  minimumEducation: "Bachelor",
+
+  industryBackground: "Web Development",
+
+  mandatoryCertifications: [],
+};
+
+// =====================================================
+// CANDIDATES
+// =====================================================
+
+let candidates = [];
+
 // =====================================================
 // DASHBOARD STATS
 // =====================================================
@@ -100,35 +130,6 @@ app.get("/api/dashboard", (req, res) => {
     res.status(500).json({ message: "Error loading dashboard stats" });
   }
 });
-
-// =====================================================
-// ACTIVE JOB
-// =====================================================
-
-let activeJobCriteria = {
-  jobTitle: "Frontend Developer",
-
-  requiredSkills: [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "React",
-  ],
-
-  minimumExperience: 1,
-
-  minimumEducation: "Bachelor",
-
-  industryBackground: "Web Development",
-
-  mandatoryCertifications: [],
-};
-
-// =====================================================
-// CANDIDATES
-// =====================================================
-
-let candidates = [];
 
 // =====================================================
 // PDF.JS
@@ -2028,7 +2029,6 @@ app.use(
 // START SERVER
 // =====================================================
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
