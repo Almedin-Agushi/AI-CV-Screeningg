@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://ai-cv-screening-backend.onrender.com";
 
 function Dashboard() {
   const [candidates, setCandidates] = useState([]);
