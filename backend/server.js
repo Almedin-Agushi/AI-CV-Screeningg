@@ -66,6 +66,42 @@ const upload = multer({
 });
 
 // =====================================================
+// DASHBOARD STATS
+// =====================================================
+app.get("/api/dashboard", (req, res) => {
+  try {
+    const totalCandidates = candidates.length;
+
+    const strongMatches = candidates.filter(
+      (c) => c.evaluation?.category === "Tier 1"
+    ).length;
+
+    const potentialMatches = candidates.filter(
+      (c) => c.evaluation?.category === "Tier 2"
+    ).length;
+
+    const scores = candidates
+      .map((c) => c.evaluation?.matchScore)
+      .filter((s) => typeof s === "number");
+
+    const avgScore =
+      scores.length > 0
+        ? scores.reduce((a, b) => a + b, 0) / scores.length
+        : null;
+
+    res.json({
+      totalCandidates,
+      strongMatches,
+      potentialMatches,
+      avgScore,
+    });
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).json({ message: "Error loading dashboard stats" });
+  }
+});
+
+// =====================================================
 // ACTIVE JOB
 // =====================================================
 
