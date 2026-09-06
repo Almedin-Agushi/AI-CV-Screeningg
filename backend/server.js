@@ -1,32 +1,40 @@
+import express from "express";
 import cors from "cors";
-const express = require("express");
-const cors = require("cors");
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
-const mammoth = require("mammoth");
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import mammoth from "mammoth";
+import { fileURLToPath } from "url";
+
+// ==================================================
+// APP SETUP
+// ==================================================
+
 const app = express();
 
-// =====================================================
-// MIDDLEWARE
-// =====================================================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-// =====================================================
+// ==================================================
 // UPLOAD DIRECTORY
-// =====================================================
+// ==================================================
 
 const uploadDir = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  fs.mkdirSync(uploadDir, {
+    recursive: true,
+  });
 }
 
-// =====================================================
-// MULTER UPLOAD CONFIGURATION
-// =====================================================
+// ==================================================
+// MULTER CONFIGURATION
+// ==================================================
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -34,29 +42,42 @@ const storage = multer.diskStorage({
   },
 
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
+    const safeName = file.originalname.replace(
+      /[^a-zA-Z0-9._-]/g,
+      "_"
+    );
+
+    cb(
+      null,
+      `${Date.now()}-${safeName}`
+    );
   },
 });
 
 const upload = multer({
-  storage: storage,
+  storage,
+
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
 
   fileFilter: (req, file, cb) => {
+    const extension = path
+      .extname(file.originalname)
+      .toLowerCase();
+
     const allowedExtensions = [
       ".pdf",
       ".docx",
       ".txt",
     ];
 
-    const extension = path
-      .extname(file.originalname)
-      .toLowerCase();
-
-    if (!allowedExtensions.includes(extension)) {
+    if (
+      !allowedExtensions.includes(extension)
+    ) {
       return cb(
         new Error(
-          "Only PDF, DOCX and TXT files are allowed."
+          "Only PDF, DOCX and TXT files are supported."
         )
       );
     }
@@ -65,211 +86,59 @@ const upload = multer({
   },
 });
 
-
-
-// =====================================================
-// ACTIVE JOB
-// =====================================================
+// ==================================================
+// IN-MEMORY DATA
+// ==================================================
 
 let activeJobCriteria = {
-  jobTitle: "Frontend Developer",
-
-  requiredSkills: [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "React",
-  ],
-
-  minimumExperience: 1,
-
-  minimumEducation: "Bachelor",
-
-  industryBackground: "Web Development",
-
+  jobTitle: "",
+  requiredSkills: [],
+  minimumExperience: 0,
+  minimumEducation: "None",
+  industryBackground: "",
   mandatoryCertifications: [],
 };
 
-// =====================================================
-// CANDIDATES
-// =====================================================
+const candidates = [];
 
-let candidates = [];
+// ==================================================
+// HELPER FUNCTIONS
+// ==================================================
 
-// =====================================================
-// PDF.JS
-// =====================================================
-
-let pdfjsLib = null;
-
-async function getPdfJs() {
-  if (!pdfjsLib) {
-    pdfjsLib = await import(
-      "pdfjs-dist/legacy/build/pdf.mjs"
-    );
-  }
-
-  return pdfjsLib;
+function normalizeText(text) {
+  return String(text || "")
+    .replace(/\r/g, "")
+    .replace(/\u00A0/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
-// =====================================================
-// HOME ROUTE
-// =====================================================
+function cleanValue(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "AI CV Screening API is running",
-  });
-});
-
-// =====================================================
-// GET CURRENT JOB
-// =====================================================
-
-app.get("/api/jobs/current", (req, res) => {
-  res.json({
-    message: "Current job criteria",
-    job: activeJobCriteria,
-  });
-});
-
-// =====================================================
-// CREATE / UPDATE JOB
-// =====================================================
-
-app.post("/api/jobs", (req, res) => {
-  try {
-    const {
-      jobTitle,
-      requiredSkills,
-      minimumExperience,
-      minimumEducation,
-      industryBackground,
-      mandatoryCertifications,
-    } = req.body;
-
-    // -----------------------------------------------
-    // REQUIRED SKILLS
-    // -----------------------------------------------
-
-    let skills = [];
-
-    if (Array.isArray(requiredSkills)) {
-      skills = requiredSkills
-        .map((skill) => String(skill).trim())
-        .filter(Boolean);
-    } else if (
-      typeof requiredSkills === "string"
-    ) {
-      skills = requiredSkills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean);
-    }
-
-    // -----------------------------------------------
-    // CERTIFICATIONS
-    // -----------------------------------------------
-
-    let certifications = [];
-
-    if (
-      Array.isArray(
-        mandatoryCertifications
-      )
-    ) {
-      certifications =
-        mandatoryCertifications
-          .map((cert) =>
-            String(cert).trim()
-          )
-          .filter(
-            (cert) =>
-              cert &&
-              cert.toLowerCase() !== "none"
-          );
-    } else if (
-      typeof mandatoryCertifications ===
-      "string"
-    ) {
-      certifications =
-        mandatoryCertifications
-          .split(",")
-          .map((cert) => cert.trim())
-          .filter(
-            (cert) =>
-              cert &&
-              cert.toLowerCase() !== "none"
-          );
-    }
-
-    // -----------------------------------------------
-    // SAVE JOB
-    // -----------------------------------------------
-
-    activeJobCriteria = {
-      jobTitle:
-        jobTitle?.trim() ||
-        "Frontend Developer",
-
-      requiredSkills: skills,
-
-      minimumExperience:
-        Number(minimumExperience) || 0,
-
-      minimumEducation:
-        minimumEducation?.trim() ||
-        "Bachelor",
-
-      industryBackground:
-        industryBackground?.trim() ||
-        "Web Development",
-
-      mandatoryCertifications:
-        certifications,
-    };
-
-    console.log(
-      "========== JOB CREATED =========="
-    );
-
-    console.log(
-      JSON.stringify(
-        activeJobCriteria,
-        null,
-        2
-      )
-    );
-
-    console.log(
-      "================================="
-    );
-
-    res.json({
-      message:
-        "Job criteria saved successfully!",
-
-      job: activeJobCriteria,
-    });
-  } catch (error) {
-    console.error(
-      "Create job error:",
-      error
-    );
-
-    res.status(500).json({
-      message:
-        "Could not save job criteria",
-
-      error:
-        error.message,
-    });
+function normalizeArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
   }
-});
 
-// =====================================================
+  return [
+    ...new Set(
+      value
+        .map((item) =>
+          cleanValue(item)
+        )
+        .filter(Boolean)
+    ),
+  ];
+}
+
+// ==================================================
 // READ TXT
-// =====================================================
+// ==================================================
 
 function readTxtFile(filePath) {
   return fs.readFileSync(
@@ -278,9 +147,9 @@ function readTxtFile(filePath) {
   );
 }
 
-// =====================================================
+// ==================================================
 // READ DOCX
-// =====================================================
+// ==================================================
 
 async function readDocxFile(filePath) {
   const result =
@@ -291,24 +160,24 @@ async function readDocxFile(filePath) {
   return result.value;
 }
 
-// =====================================================
+// ==================================================
 // READ PDF
-// =====================================================
+// ==================================================
 
 async function readPdfFile(filePath) {
-  const pdfjs = await getPdfJs();
+  const pdfjsLib =
+    await import(
+      "pdfjs-dist/legacy/build/pdf.mjs"
+    );
 
   const data = new Uint8Array(
     fs.readFileSync(filePath)
   );
 
-  const loadingTask =
-    pdfjs.getDocument({
-      data,
-    });
-
   const pdf =
-    await loadingTask.promise;
+    await pdfjsLib.getDocument({
+      data,
+    }).promise;
 
   let fullText = "";
 
@@ -318,28 +187,56 @@ async function readPdfFile(filePath) {
     pageNumber++
   ) {
     const page =
-      await pdf.getPage(
-        pageNumber
-      );
+      await pdf.getPage(pageNumber);
 
     const content =
       await page.getTextContent();
 
     const pageText =
       content.items
-        .map((item) => item.str)
+        .map((item) =>
+          item.str || ""
+        )
         .join(" ");
 
-    fullText +=
-      pageText + "\n";
+    fullText += pageText + "\n";
   }
 
   return fullText;
 }
 
-// =====================================================
-// EXTRACT EMAIL
-// =====================================================
+// ==================================================
+// EXTRACT CV TEXT
+// ==================================================
+
+async function extractCVText(
+  filePath,
+  originalName
+) {
+  const extension = path
+    .extname(originalName)
+    .toLowerCase();
+
+  if (extension === ".pdf") {
+    return await readPdfFile(filePath);
+  }
+
+  if (extension === ".docx") {
+    return await readDocxFile(filePath);
+  }
+
+  if (extension === ".txt") {
+    return readTxtFile(filePath);
+  }
+
+  throw new Error(
+    "Unsupported file format."
+  );
+}
+
+// ==================================================
+// EMAIL
+// ==================================================
 
 function extractEmail(text) {
   const match = text.match(
@@ -351,579 +248,1512 @@ function extractEmail(text) {
     : "";
 }
 
-// =====================================================
-// EXTRACT LINKEDIN
-// =====================================================
+// ==================================================
+// LINKEDIN
+// ==================================================
 
 function extractLinkedIn(text) {
   const match = text.match(
-    /https?:\/\/(www\.)?linkedin\.com\/in\/[^\s]+/i
+    /https?:\/\/(?:www\.)?linkedin\.com\/[^\s|]+/i
   );
 
-  return match
-    ? match[0]
-    : "";
-}
-
-// =====================================================
-// EXTRACT PHONE
-// =====================================================
-
-function extractPhone(text) {
-  const matches =
-    text.match(
-      /\+?\d[\d\s().-]{7,}\d/g
-    );
-
-  if (
-    !matches ||
-    matches.length === 0
-  ) {
+  if (!match) {
     return "";
   }
 
-  return matches[0].trim();
+  return match[0].replace(
+    /[.,;)\]]+$/,
+    ""
+  );
 }
 
-// =====================================================
-// EXTRACT NAME
-// =====================================================
+// ==================================================
+// PHONE
+// ==================================================
+
+function extractPhone(text) {
+  const phoneRegex =
+    /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3}[\s.-]?\d{3,4}[\s.-]?\d{0,4}/g;
+
+  const matches =
+    text.match(phoneRegex) || [];
+
+  for (const phone of matches) {
+    const digits =
+      phone.replace(/\D/g, "");
+
+    if (
+      digits.length >= 8 &&
+      digits.length <= 15
+    ) {
+      return cleanValue(phone);
+    }
+  }
+
+  return "";
+}
+
+// ==================================================
+// NAME
+// ==================================================
 
 function extractName(
   text,
-  originalFileName = ""
+  originalName
 ) {
   const lines = text
     .split("\n")
     .map((line) =>
-      line.trim()
+      cleanValue(line)
     )
-    .filter(
-      (line) =>
-        line.length > 0
-    );
-
-  let name =
-    "Unknown Candidate";
-
-  // -----------------------------------------------
-  // FIRST METHOD
-  // Look at first 20 lines
-  // -----------------------------------------------
+    .filter(Boolean);
 
   for (
-    const line of lines.slice(
-      0,
-      20
-    )
+    const line of lines.slice(0, 10)
   ) {
-    const cleanLine =
-      line
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .trim();
-
-    const looksLikeName =
-      /^[A-Za-zÀ-ÿ]+(?:[\s'-]+[A-Za-zÀ-ÿ]+){1,4}$/.test(
-        cleanLine
-      );
+    const lower =
+      line.toLowerCase();
 
     if (
-      cleanLine.length >= 5 &&
-      cleanLine.length <= 60 &&
-      looksLikeName &&
-      !cleanLine
-        .toLowerCase()
-        .includes("date") &&
-      !cleanLine
-        .toLowerCase()
-        .includes("birth") &&
-      !cleanLine
-        .toLowerCase()
-        .includes(
-          "nationality"
-        ) &&
-      !cleanLine
-        .toLowerCase()
-        .includes(
-          "gender"
-        ) &&
-      !cleanLine
-        .toLowerCase()
-        .includes(
-          "phone"
-        ) &&
-      !cleanLine
-        .toLowerCase()
-        .includes(
-          "address"
-        ) &&
-      !cleanLine
-        .toLowerCase()
-        .includes(
-          "email"
-        )
+      lower.includes("date of birth") ||
+      lower.includes("phone") ||
+      lower.includes("email") ||
+      lower.includes("linkedin") ||
+      lower.includes("address")
     ) {
-      name =
-        cleanLine;
-
-      break;
+      continue;
     }
-  }
 
-  // -----------------------------------------------
-  // SECOND METHOD
-  // Look around email
-  // -----------------------------------------------
-
-  if (
-    name ===
-    "Unknown Candidate"
-  ) {
-    const email =
-      extractEmail(
-        text
-      );
-
-    if (email) {
-      const emailIndex =
-        text.indexOf(
-          email
-        );
-
-      if (
-        emailIndex !== -1
-      ) {
-        const beforeEmail =
-          text.substring(
-            Math.max(
-              0,
-              emailIndex -
-                300
-            ),
-            emailIndex
-          );
-
-        const possibleLines =
-          beforeEmail
-            .split("\n")
-            .map(
-              (line) =>
-                line.trim()
-            )
-            .filter(
-              (line) =>
-                line.length >
-                0
-            )
-            .reverse();
-
-        for (
-          const line of possibleLines
-        ) {
-          const cleanLine =
-            line
-              .replace(
-                /\s+/g,
-                " "
-              )
-              .trim();
-
-          if (
-            cleanLine.length >=
-              5 &&
-            cleanLine.length <=
-              60 &&
-            /^[A-Za-zÀ-ÿ]+(?:[\s'-]+[A-Za-zÀ-ÿ]+){1,4}$/.test(
-              cleanLine
-            )
-          ) {
-            name =
-              cleanLine;
-
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // -----------------------------------------------
-  // THIRD METHOD
-  // Filename fallback
-  // -----------------------------------------------
-
-  if (
-    name ===
-    "Unknown Candidate" &&
-    originalFileName
-  ) {
-    const fileName =
-      originalFileName
-        .replace(
-          /\.[^/.]+$/,
-          ""
-        )
-        .replace(
-          /[_-]+/g,
-          " "
-        )
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .trim();
-
-    if (
-      fileName.length >= 3
-    ) {
-      name =
-        fileName;
-    }
-  }
-
-  return name;
-}
-
-// =====================================================
-// EXTRACT SKILLS
-// =====================================================
-
-function extractSkills(text) {
-  const possibleSkills = [
-    "HTML5",
-    "HTML",
-    "CSS3",
-    "CSS",
-    "JavaScript",
-    "React JS",
-    "React",
-    "Tailwind CSS",
-    "Bootstrap",
-    "Sass",
-    "PHP",
-    "Laravel",
-    "MySQL",
-    "WordPress",
-    "GitHub",
-    "Git",
-    "Node.js",
-    "Node",
-    "TypeScript",
-    "Next.js",
-    "Vite",
-  ];
-
-  const lowerText =
-    text.toLowerCase();
-
-  return possibleSkills.filter(
-    (skill) =>
-      lowerText.includes(
-        skill.toLowerCase()
+    const cleaned = line
+      .replace(
+        /^(candidate|name)\s*[:\-]?\s*/i,
+        ""
       )
+      .trim();
+
+    const words =
+      cleaned.split(/\s+/);
+
+    if (
+      words.length >= 2 &&
+      words.length <= 5 &&
+      /^[A-Za-zÀ-ž' -]+$/.test(cleaned)
+    ) {
+      return cleaned;
+    }
+  }
+
+  const filenameName = path
+    .basename(
+      originalName,
+      path.extname(originalName)
+    )
+    .replace(/[_-]+/g, " ")
+    .replace(/\bCV\b/gi, "")
+    .replace(/\bResume\b/gi, "")
+    .trim();
+
+  return (
+    filenameName ||
+    "Unknown Candidate"
   );
 }
 
-// =====================================================
-// EXTRACT EXPERIENCE
-// =====================================================
+// ==================================================
+// SKILLS DATABASE
+// ==================================================
 
-function extractExperience(
-  text
-) {
-  const experience = [];
+const skillsDatabase = [
+  "HTML5",
+  "HTML",
+  "CSS3",
+  "CSS",
+  "JavaScript",
+  "TypeScript",
+  "React JS",
+  "React.js",
+  "React",
+  "Next.js",
+  "Next",
+  "Vue.js",
+  "Vue",
+  "Angular",
+  "Tailwind CSS",
+  "Tailwind",
+  "Bootstrap",
+  "Sass",
+  "SCSS",
+  "PHP",
+  "Laravel",
+  "MySQL",
+  "PostgreSQL",
+  "SQL",
+  "WordPress",
+  "GitHub",
+  "Git",
+  "Node.js",
+  "Node",
+  "Express",
+  "MongoDB",
+  "Java",
+  "Python",
+  "C++",
+  "C#",
+  ".NET",
+  "Docker",
+  "Kubernetes",
+  "AWS",
+  "Azure",
+  "Shopify",
+  "Figma",
+  "Linux",
+  "Windows",
+  "REST API",
+  "API",
+];
 
+// ==================================================
+// SKILL NORMALIZATION
+// ==================================================
+
+function normalizeSkill(skill) {
+  let value = String(skill || "")
+    .toLowerCase()
+    .trim();
+
+  value = value
+    .replace(/\s+/g, " ");
+
+  const aliases = {
+    "html5": "html",
+    "css3": "css",
+
+    "react.js": "react",
+    "react js": "react",
+    "reactjs": "react",
+
+    "node.js": "node",
+    "node js": "node",
+    "nodejs": "node",
+
+    "next.js": "next",
+    "next js": "next",
+
+    "vue.js": "vue",
+    "vue js": "vue",
+
+    "tailwind css": "tailwind",
+
+    "rest api": "api",
+  };
+
+  return aliases[value] || value;
+}
+
+// ==================================================
+// EXTRACT SKILLS
+// ==================================================
+
+function extractSkills(text) {
   const lowerText =
-    text.toLowerCase();
+    String(text || "").toLowerCase();
 
-  // -----------------------------------------------
-  // Sezai Surroi
-  // -----------------------------------------------
+  const found = [];
 
-  if (
-    lowerText.includes(
-      "sezai surroi"
-    )
+  for (
+    const skill of skillsDatabase
   ) {
-    experience.push({
-      company:
-        "Sezai Surroi",
+    const normalizedSkill =
+      normalizeSkill(skill);
 
-      role:
-        "Intern",
+    let searchTerms = [
+      skill.toLowerCase(),
+      normalizedSkill,
+    ];
 
-      duration:
-        "01/04/2024 - 31/03/2025",
-    });
+    if (
+      normalizedSkill === "react"
+    ) {
+      searchTerms = [
+        "react",
+        "react.js",
+        "react js",
+      ];
+    }
+
+    if (
+      normalizedSkill === "node"
+    ) {
+      searchTerms = [
+        "node",
+        "node.js",
+        "node js",
+      ];
+    }
+
+    const exists =
+      searchTerms.some(
+        (term) =>
+          lowerText.includes(term)
+      );
+
+    if (exists) {
+      found.push(normalizedSkill);
+    }
   }
 
-  // -----------------------------------------------
-  // StarLabs
-  // -----------------------------------------------
+  return [
+    ...new Set(found),
+  ];
+}
 
-  if (
-    lowerText.includes(
-      "starlabs"
-    )
+// ==================================================
+// SKILL MATCH
+// ==================================================
+
+function skillsMatch(
+  candidateSkill,
+  requiredSkill
+) {
+  const candidate =
+    normalizeSkill(candidateSkill);
+
+  const required =
+    normalizeSkill(requiredSkill);
+
+  return candidate === required;
+}
+
+// ==================================================
+// EXPERIENCE
+// ==================================================
+
+function extractExperience(text) {
+  const experience = [];
+
+  if (!text) {
+    return experience;
+  }
+
+  // =================================================
+  // FORMATS:
+  //
+  // 01/2023 - 12/2024
+  // 01/01/2023 - 01/01/2024
+  // 2023 - 2024
+  // Jan 2023 - Dec 2024
+  // =================================================
+
+  const dateRegex =
+    /(?:(\d{1,2})[\/.-](\d{4})|(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})|((?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4})|(\d{4}))\s*(?:-|–|—|to)\s*(?:(\d{1,2})[\/.-](\d{4})|(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})|((?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4})|(\d{4}|present|current|now))/gi;
+
+  const matches = [
+    ...text.matchAll(dateRegex),
+  ];
+
+  for (
+    let i = 0;
+    i < matches.length;
+    i++
   ) {
+    const current =
+      matches[i];
+
+    const start =
+      Math.max(
+        0,
+        current.index - 200
+      );
+
+    const nearbyText =
+      text
+        .substring(
+          start,
+          current.index
+        )
+        .trim();
+
+    const lines =
+      nearbyText
+        .split("\n")
+        .map((line) =>
+          cleanValue(line)
+        )
+        .filter(Boolean);
+
+    let role =
+      "Not specified";
+
+    let company =
+      "Not specified";
+
+    if (lines.length >= 1) {
+      role =
+        lines[lines.length - 1];
+    }
+
+    if (lines.length >= 2) {
+      company =
+        lines[lines.length - 2];
+    }
+
     experience.push({
-      company:
-        "StarLabs",
-
-      role:
-        "Intern",
-
-      duration:
-        "06/2023 - 09/2023",
+      role,
+      company,
+      duration: current[0],
     });
   }
 
   return experience;
 }
 
-// =====================================================
-// EXTRACT EDUCATION
-// =====================================================
+// ==================================================
+// DATE TO MONTH
+// ==================================================
 
-function extractEducation(
-  text
+function dateToMonth(value) {
+  if (!value) {
+    return null;
+  }
+
+  const text =
+    String(value)
+      .trim()
+      .toLowerCase();
+
+  if (
+    text === "present" ||
+    text === "current" ||
+    text === "now"
+  ) {
+    const now = new Date();
+
+    return (
+      now.getFullYear() * 12 +
+      now.getMonth()
+    );
+  }
+
+  // DD/MM/YYYY
+
+  let match = text.match(
+    /^\d{1,2}[\/.-](\d{1,2})[\/.-](\d{4})$/
+  );
+
+  if (match) {
+    return (
+      Number(match[2]) * 12 +
+      Number(match[1]) - 1
+    );
+  }
+
+  // MM/YYYY
+
+  match = text.match(
+    /^(\d{1,2})[\/.-](\d{4})$/
+  );
+
+  if (match) {
+    return (
+      Number(match[2]) * 12 +
+      Number(match[1]) - 1
+    );
+  }
+
+  // YYYY
+
+  match = text.match(
+    /^(\d{4})$/
+  );
+
+  if (match) {
+    return (
+      Number(match[1]) * 12
+    );
+  }
+
+  // MONTH YYYY
+
+  const parsedDate =
+    new Date(`1 ${text}`);
+
+  if (
+    !Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+    return (
+      parsedDate.getFullYear() *
+        12 +
+      parsedDate.getMonth()
+    );
+  }
+
+  return null;
+}
+
+// ==================================================
+// CALCULATE EXPERIENCE YEARS
+// ==================================================
+
+function calculateExperienceYears(
+  experience
 ) {
+  if (
+    !Array.isArray(experience) ||
+    experience.length === 0
+  ) {
+    return 0;
+  }
+
+  let totalMonths = 0;
+
+  for (const item of experience) {
+    const duration =
+      item.duration || "";
+
+    const parts =
+      duration.split(
+        /\s*(?:-|–|—|to)\s*/i
+      );
+
+    if (parts.length < 2) {
+      continue;
+    }
+
+    const startMonth =
+      dateToMonth(parts[0]);
+
+    const endMonth =
+      dateToMonth(parts[1]);
+
+    if (
+      startMonth === null ||
+      endMonth === null
+    ) {
+      continue;
+    }
+
+    const months =
+      endMonth - startMonth;
+
+    if (months > 0) {
+      totalMonths += months;
+    }
+  }
+
+  return (
+    Math.round(
+      (totalMonths / 12) * 10
+    ) / 10
+  );
+}
+
+// ==================================================
+// EDUCATION
+// ==================================================
+
+function extractEducation(text) {
   const education = [];
+
+  if (!text) {
+    return education;
+  }
 
   const lowerText =
     text.toLowerCase();
 
-  // -----------------------------------------------
-  // Bachelor
-  // -----------------------------------------------
+  const degrees = [
+    {
+      degree: "PhD",
+      keywords: [
+        "phd",
+        "ph.d",
+        "doctor of philosophy",
+      ],
+    },
 
-  if (
-    lowerText.includes(
-      "bachelor in computer science"
-    ) ||
-    lowerText.includes(
-      "bachelor of computer science"
-    ) ||
-    lowerText.includes(
-      "bachelor computer science"
-    )
-  ) {
-    education.push({
-      degree:
-        "Bachelor in Computer Science",
+    {
+      degree: "Master",
+      keywords: [
+        "master",
+        "msc",
+        "m.sc",
+        "ma ",
+        "mba",
+      ],
+    },
 
-      institution:
-        "South East European University",
+    {
+      degree: "Bachelor",
+      keywords: [
+        "bachelor",
+        "bsc",
+        "b.sc",
+        "undergraduate",
+      ],
+    },
 
-      duration:
-        "2014 - 2018",
-    });
-  }
+    {
+      degree: "High School",
+      keywords: [
+        "high school",
+        "secondary school",
+      ],
+    },
+  ];
 
-  // -----------------------------------------------
-  // Master
-  // -----------------------------------------------
+  for (const item of degrees) {
+    const exists =
+      item.keywords.some(
+        (keyword) =>
+          lowerText.includes(keyword)
+      );
 
-  if (
-    lowerText.includes(
-      "master in computer science"
-    ) ||
-    lowerText.includes(
-      "master of computer science"
-    ) ||
-    lowerText.includes(
-      "master computer science"
-    )
-  ) {
-    education.push({
-      degree:
-        "Master in Computer Science",
+    if (exists) {
+      education.push({
+        degree: item.degree,
 
-      institution:
-        "South East European University",
+        institution:
+          "Not specified",
 
-      duration:
-        "2018 - 2021",
-    });
+        duration:
+          "Not specified",
+      });
+    }
   }
 
   return education;
 }
 
-// =====================================================
-// EXTRACT CERTIFICATIONS
-// =====================================================
+// ==================================================
+// EDUCATION LEVEL
+// ==================================================
 
-function extractCertifications(
-  text
+function getEducationLevel(
+  education
 ) {
-  const certifications = [];
+  if (
+    !Array.isArray(education)
+  ) {
+    return 0;
+  }
 
-  const knownCertifications = [
+  let highest = 0;
+
+  for (const item of education) {
+    const degree =
+      String(
+        item.degree || ""
+      ).toLowerCase();
+
+    if (
+      degree.includes("phd") ||
+      degree.includes("doctor")
+    ) {
+      highest = Math.max(
+        highest,
+        4
+      );
+    } else if (
+      degree.includes("master")
+    ) {
+      highest = Math.max(
+        highest,
+        3
+      );
+    } else if (
+      degree.includes("bachelor")
+    ) {
+      highest = Math.max(
+        highest,
+        2
+      );
+    } else if (
+      degree.includes("high school")
+    ) {
+      highest = Math.max(
+        highest,
+        1
+      );
+    }
+  }
+
+  return highest;
+}
+
+// ==================================================
+// EDUCATION MATCH
+// ==================================================
+
+function educationMatches(
+  candidateEducation,
+  requiredEducation
+) {
+  if (
+    !requiredEducation ||
+    String(requiredEducation)
+      .toLowerCase()
+      .trim() === "none"
+  ) {
+    return true;
+  }
+
+  const required =
+    String(requiredEducation)
+      .toLowerCase()
+      .trim();
+
+  const candidateLevel =
+    getEducationLevel(
+      candidateEducation
+    );
+
+  if (
+    required.includes("phd") ||
+    required.includes("doctor")
+  ) {
+    return candidateLevel >= 4;
+  }
+
+  if (
+    required.includes("master")
+  ) {
+    return candidateLevel >= 3;
+  }
+
+  if (
+    required.includes("bachelor")
+  ) {
+    return candidateLevel >= 2;
+  }
+
+  if (
+    required.includes("high school")
+  ) {
+    return candidateLevel >= 1;
+  }
+
+  return true;
+}
+
+// ==================================================
+// CERTIFICATIONS
+// ==================================================
+
+function extractCertifications(text) {
+  const certificationsDatabase = [
+    "AWS Certified",
     "AWS",
+    "Cisco Certified",
     "Cisco",
     "Microsoft Certified",
     "Google Certified",
+    "Microsoft Azure",
+    "Azure Fundamentals",
     "Azure",
     "Oracle",
     "CompTIA",
+    "CCNA",
+    "CCNP",
+    "PMP",
+    "Scrum Master",
+    "Google Cloud",
   ];
 
   const lowerText =
-    text.toLowerCase();
+    String(text || "").toLowerCase();
+
+  const found = [];
 
   for (
-    const certification of knownCertifications
+    const certification of
+    certificationsDatabase
   ) {
     if (
       lowerText.includes(
         certification.toLowerCase()
       )
     ) {
-      certifications.push(
+      found.push(
         certification
       );
     }
   }
 
-  return certifications;
+  return [
+    ...new Set(found),
+  ];
 }
 
-// =====================================================
+// ==================================================
+// CERTIFICATION MATCH
+// ==================================================
+
+function certificationMatches(
+  candidateCertification,
+  requiredCertification
+) {
+  const candidate =
+    String(candidateCertification || "")
+      .toLowerCase()
+      .trim();
+
+  const required =
+    String(requiredCertification || "")
+      .toLowerCase()
+      .trim();
+
+  if (!candidate || !required) {
+    return false;
+  }
+
+  return (
+    candidate.includes(required) ||
+    required.includes(candidate)
+  );
+}
+
+// ==================================================
+// INDUSTRY MATCHING
+// ==================================================
+
+function checkIndustryMatch(
+  candidateText,
+  industry
+) {
+  if (
+    !industry ||
+    String(industry)
+      .toLowerCase()
+      .trim() === "none"
+  ) {
+    return true;
+  }
+
+  const text =
+    String(
+      candidateText || ""
+    ).toLowerCase();
+
+  const industryWords =
+    String(industry)
+      .toLowerCase()
+      .split(/[,;/\s]+/)
+      .map((word) =>
+        word.trim()
+      )
+      .filter(
+        (word) =>
+          word.length > 2
+      );
+
+  if (
+    industryWords.length === 0
+  ) {
+    return true;
+  }
+
+  return industryWords.some(
+    (word) =>
+      text.includes(word)
+  );
+}
+
+// ==================================================
+// EVALUATE CANDIDATE
+// ==================================================
+
+function evaluateCandidate(candidate) {
+  const criteria =
+    activeJobCriteria;
+
+  const requiredSkills =
+    normalizeArray(
+      criteria.requiredSkills
+    );
+
+  const candidateSkills =
+    normalizeArray(
+      candidate.skills
+    );
+
+  // =================================================
+  // SKILLS
+  // =================================================
+
+  const matchedSkills =
+    requiredSkills.filter(
+      (requiredSkill) =>
+        candidateSkills.some(
+          (candidateSkill) =>
+            skillsMatch(
+              candidateSkill,
+              requiredSkill
+            )
+        )
+    );
+
+  const missingSkills =
+    requiredSkills.filter(
+      (requiredSkill) =>
+        !matchedSkills.includes(
+          requiredSkill
+        )
+    );
+
+  let skillsScore = 10;
+
+  if (
+    requiredSkills.length > 0
+  ) {
+    skillsScore =
+      (matchedSkills.length /
+        requiredSkills.length) *
+      10;
+  }
+
+  // =================================================
+  // EXPERIENCE
+  // =================================================
+
+  const experienceYears =
+    calculateExperienceYears(
+      candidate.experience
+    );
+
+  const minimumExperience =
+    Number(
+      criteria.minimumExperience
+    ) || 0;
+
+  let experienceScore = 10;
+
+  if (
+    minimumExperience > 0
+  ) {
+    experienceScore =
+      Math.min(
+        10,
+        (experienceYears /
+          minimumExperience) *
+          10
+      );
+  }
+
+  // =================================================
+  // EDUCATION
+  // =================================================
+
+  const hasEducation =
+    educationMatches(
+      candidate.education,
+      criteria.minimumEducation
+    );
+
+  const educationScore =
+    hasEducation ? 10 : 0;
+
+  // =================================================
+  // CERTIFICATIONS
+  // =================================================
+
+  const mandatoryCertifications =
+    normalizeArray(
+      criteria.mandatoryCertifications
+    );
+
+  const candidateCertifications =
+    normalizeArray(
+      candidate.certifications
+    );
+
+  const matchedCertifications =
+    mandatoryCertifications.filter(
+      (requiredCertification) =>
+        candidateCertifications.some(
+          (candidateCertification) =>
+            certificationMatches(
+              candidateCertification,
+              requiredCertification
+            )
+        )
+    );
+
+  const missingCertifications =
+    mandatoryCertifications.filter(
+      (requiredCertification) =>
+        !matchedCertifications.includes(
+          requiredCertification
+        )
+    );
+
+  let certificationScore = 10;
+
+  if (
+    mandatoryCertifications.length > 0
+  ) {
+    certificationScore =
+      (matchedCertifications.length /
+        mandatoryCertifications.length) *
+      10;
+  }
+
+  // =================================================
+  // INDUSTRY
+  // =================================================
+
+  const industryMatch =
+    checkIndustryMatch(
+      candidate.cvText,
+      criteria.industryBackground
+    );
+
+  const industryScore =
+    industryMatch ? 10 : 0;
+
+  // =================================================
+  // TOTAL SCORE
+  //
+  // Skills          40%
+  // Experience      25%
+  // Education       15%
+  // Certifications  10%
+  // Industry        10%
+  // =================================================
+
+  const totalScore =
+    skillsScore * 4 +
+    experienceScore * 2.5 +
+    educationScore * 1.5 +
+    certificationScore +
+    industryScore;
+
+  let matchScore =
+    Math.round(totalScore);
+
+  matchScore = Math.max(
+    0,
+    Math.min(
+      100,
+      matchScore
+    )
+  );
+
+  // =================================================
+  // ELIMINATION RULES
+  // =================================================
+
+  const eliminationReasons = [];
+
+  if (
+    mandatoryCertifications.length > 0 &&
+    missingCertifications.length > 0
+  ) {
+    eliminationReasons.push(
+      `Missing mandatory certification(s): ${missingCertifications.join(
+        ", "
+      )}`
+    );
+  }
+
+  // =================================================
+  // CATEGORY
+  // =================================================
+
+  let category;
+
+  if (
+    eliminationReasons.length > 0
+  ) {
+    category = "Tier 3";
+  } else if (
+    matchScore >= 85
+  ) {
+    category = "Tier 1";
+  } else if (
+    matchScore >= 65
+  ) {
+    category = "Tier 2";
+  } else {
+    category = "Tier 3";
+  }
+
+  // =================================================
+  // EVALUATION MATRIX
+  // =================================================
+
+  const evaluationMatrix = {
+    Skills: Number(
+      skillsScore.toFixed(1)
+    ),
+
+    Experience: Number(
+      experienceScore.toFixed(1)
+    ),
+
+    Education: Number(
+      educationScore.toFixed(1)
+    ),
+
+    Certifications: Number(
+      certificationScore.toFixed(1)
+    ),
+
+    Industry: Number(
+      industryScore.toFixed(1)
+    ),
+  };
+
+  // =================================================
+  // JUSTIFICATION
+  // =================================================
+
+  const strengths = [];
+  const gaps = [];
+
+  if (
+    matchedSkills.length > 0
+  ) {
+    strengths.push(
+      `matches ${matchedSkills.length} of ${requiredSkills.length} required skills`
+    );
+  }
+
+  if (
+    missingSkills.length > 0
+  ) {
+    gaps.push(
+      `missing skills: ${missingSkills.join(
+        ", "
+      )}`
+    );
+  }
+
+  if (
+    minimumExperience > 0
+  ) {
+    if (
+      experienceYears >=
+      minimumExperience
+    ) {
+      strengths.push(
+        `meets experience requirement with approximately ${experienceYears} year(s)`
+      );
+    } else {
+      gaps.push(
+        `approximately ${experienceYears} year(s) of experience, required ${minimumExperience}`
+      );
+    }
+  }
+
+  if (
+    criteria.minimumEducation &&
+    String(
+      criteria.minimumEducation
+    ).toLowerCase() !== "none"
+  ) {
+    if (hasEducation) {
+      strengths.push(
+        "meets education requirement"
+      );
+    } else {
+      gaps.push(
+        "does not meet education requirement"
+      );
+    }
+  }
+
+  if (
+    mandatoryCertifications.length > 0
+  ) {
+    if (
+      missingCertifications.length === 0
+    ) {
+      strengths.push(
+        "has all mandatory certifications"
+      );
+    } else {
+      gaps.push(
+        `missing certifications: ${missingCertifications.join(
+          ", "
+        )}`
+      );
+    }
+  }
+
+  if (
+    criteria.industryBackground
+  ) {
+    if (industryMatch) {
+      strengths.push(
+        "has relevant industry background"
+      );
+    } else {
+      gaps.push(
+        "no clear matching industry background"
+      );
+    }
+  }
+
+  let justification =
+    `The candidate was evaluated for the ${
+      criteria.jobTitle ||
+      "selected"
+    } position. `;
+
+  if (
+    strengths.length > 0
+  ) {
+    justification +=
+      `Strengths: ${strengths.join(
+        "; "
+      )}. `;
+  }
+
+  if (
+    gaps.length > 0
+  ) {
+    justification +=
+      `Gaps: ${gaps.join(
+        "; "
+      )}. `;
+  }
+
+  if (
+    eliminationReasons.length > 0
+  ) {
+    justification +=
+      "The candidate was placed in Tier 3 because a mandatory requirement was not met.";
+  } else if (
+    category === "Tier 1"
+  ) {
+    justification +=
+      "Overall, the candidate is a strong match.";
+  } else if (
+    category === "Tier 2"
+  ) {
+    justification +=
+      "Overall, the candidate is a potential match.";
+  } else {
+    justification +=
+      "Overall, the candidate is currently a weak match.";
+  }
+
+  console.log(
+    "Candidate evaluation:",
+    {
+      name:
+        candidate.name,
+
+      score:
+        matchScore,
+
+      category,
+
+      experienceYears,
+
+      matchedSkills,
+
+      missingSkills,
+
+      eliminationReasons,
+    }
+  );
+
+  return {
+    matchScore,
+
+    category,
+
+    evaluationMatrix,
+
+    matchedSkills,
+
+    missingSkills,
+
+    matchedCertifications,
+
+    missingCertifications,
+
+    eliminationReasons,
+
+    justification,
+
+    experienceYears,
+  };
+}
+
+// ==================================================
+// HOME
+// ==================================================
+
+app.get("/", (req, res) => {
+  res.json({
+    message:
+      "AI CV Screening API is running",
+  });
+});
+
+// ==================================================
+// HEALTH CHECK
+// ==================================================
+
+app.get(
+  "/api/health",
+  (req, res) => {
+    res.json({
+      status: "ok",
+      message:
+        "Server is running",
+    });
+  }
+);
+
+// ==================================================
+// GET CURRENT JOB
+// ==================================================
+
+app.get(
+  "/api/jobs/current",
+  (req, res) => {
+    res.json({
+      job:
+        activeJobCriteria,
+    });
+  }
+);
+
+// ==================================================
+// CREATE JOB
+// ==================================================
+
+app.post(
+  "/api/jobs",
+  (req, res) => {
+    try {
+      const {
+        jobTitle,
+        requiredSkills,
+        minimumExperience,
+        minimumEducation,
+        industryBackground,
+        mandatoryCertifications,
+      } = req.body;
+
+      if (
+        !jobTitle ||
+        !String(jobTitle).trim()
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Job title is required.",
+          });
+      }
+
+      activeJobCriteria = {
+        jobTitle:
+          String(jobTitle).trim(),
+
+        requiredSkills:
+          normalizeArray(
+            requiredSkills
+          ),
+
+        minimumExperience:
+          Math.max(
+            0,
+            Number(
+              minimumExperience
+            ) || 0
+          ),
+
+        minimumEducation:
+          !minimumEducation ||
+          String(
+            minimumEducation
+          )
+            .trim()
+            .toLowerCase() === "none"
+            ? "None"
+            : String(
+                minimumEducation
+              ).trim(),
+
+        industryBackground:
+          String(
+            industryBackground || ""
+          ).trim(),
+
+        mandatoryCertifications:
+          normalizeArray(
+            mandatoryCertifications
+          ).filter(
+            (certification) =>
+              certification
+                .toLowerCase() !==
+              "none"
+          ),
+      };
+
+      // =============================================
+      // RE-EVALUATE EXISTING CANDIDATES
+      // =============================================
+
+      for (
+        const candidate of candidates
+      ) {
+        candidate.evaluation =
+          evaluateCandidate(
+            candidate
+          );
+      }
+
+      console.log(
+        "Job created:",
+        activeJobCriteria
+      );
+
+      res.status(201).json({
+        message:
+          "Job criteria saved successfully.",
+
+        job:
+          activeJobCriteria,
+      });
+    } catch (error) {
+      console.error(
+        "Create job error:",
+        error
+      );
+
+      res.status(500).json({
+        message:
+          "Could not create job.",
+      });
+    }
+  }
+);
+
+// ==================================================
 // UPLOAD CV
-// =====================================================
+// ==================================================
 
 app.post(
   "/api/candidates/upload",
+
   upload.single("cv"),
+
   async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({
-        message:
-          "No CV file uploaded",
-      });
-    }
-
     try {
-      const filePath =
-        req.file.path;
-
-      const extension =
-        path
-          .extname(
-            req.file.originalname
-          )
-          .toLowerCase();
-
-      let text = "";
-
-      // -----------------------------------------------
-      // PDF
-      // -----------------------------------------------
-
-      if (
-        extension === ".pdf"
-      ) {
-        text =
-          await readPdfFile(
-            filePath
-          );
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "No CV file was uploaded.",
+          });
       }
 
-      // -----------------------------------------------
-      // DOCX
-      // -----------------------------------------------
+      console.log(
+        "Processing:",
+        req.file.originalname
+      );
 
-      else if (
-        extension === ".docx"
-      ) {
-        text =
-          await readDocxFile(
-            filePath
-          );
+      // =============================================
+      // EXTRACT TEXT
+      // =============================================
+
+      const cvText =
+        await extractCVText(
+          req.file.path,
+          req.file.originalname
+        );
+
+      const normalizedCVText =
+        normalizeText(cvText);
+
+      if (!normalizedCVText) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Could not extract text from this CV.",
+          });
       }
 
-      // -----------------------------------------------
-      // TXT
-      // -----------------------------------------------
+      // =============================================
+      // EXTRACT DATA
+      // =============================================
 
-      else if (
-        extension === ".txt"
-      ) {
-        text =
-          readTxtFile(
-            filePath
-          );
-      }
+      const name =
+        extractName(
+          normalizedCVText,
+          req.file.originalname
+        );
 
-      // -----------------------------------------------
-      // CHECK TEXT
-      // -----------------------------------------------
+      const email =
+        extractEmail(
+          normalizedCVText
+        );
 
-      if (
-        !text ||
-        text.trim()
-          .length === 0
-      ) {
-        return res.status(400).json({
-          message:
-            "Could not extract text from CV.",
-        });
-      }
+      const phone =
+        extractPhone(
+          normalizedCVText
+        );
 
-      // -----------------------------------------------
+      const linkedin =
+        extractLinkedIn(
+          normalizedCVText
+        );
+
+      const skills =
+        extractSkills(
+          normalizedCVText
+        );
+
+      const experience =
+        extractExperience(
+          normalizedCVText
+        );
+
+      const education =
+        extractEducation(
+          normalizedCVText
+        );
+
+      const certifications =
+        extractCertifications(
+          normalizedCVText
+        );
+
+      // =============================================
       // CREATE CANDIDATE
-      // -----------------------------------------------
+      // =============================================
 
       const candidate = {
         candidateId:
-          `candidate-${Date.now()}-${Math.random()
-            .toString(36)
-            .substring(2, 8)}`,
+          `candidate-${Date.now()}-${Math.floor(
+            Math.random() * 10000
+          )}`,
 
-        name:
-          extractName(
-            text,
-            req.file.originalname
-          ),
+        name,
 
-        email:
-          extractEmail(
-            text
-          ),
+        email,
 
-        phone:
-          extractPhone(
-            text
-          ),
+        phone,
 
-        linkedin:
-          extractLinkedIn(
-            text
-          ),
+        linkedin,
 
-        skills:
-          extractSkills(
-            text
-          ),
+        skills,
 
-        experience:
-          extractExperience(
-            text
-          ),
+        experience,
 
-        education:
-          extractEducation(
-            text
-          ),
+        education,
 
-        certifications:
-          extractCertifications(
-            text
-          ),
+        certifications,
 
         originalFile:
           req.file.filename,
@@ -932,82 +1762,96 @@ app.post(
           req.file.originalname,
 
         cvText:
-          text,
+          normalizedCVText,
 
         evaluation:
           null,
+
+        createdAt:
+          new Date().toISOString(),
       };
 
-      // -----------------------------------------------
-      // ADD CANDIDATE
-      // IMPORTANT:
-      // DO NOT RESET candidates[]
-      // -----------------------------------------------
+      // =============================================
+      // AUTO EVALUATE
+      // =============================================
 
-      candidates.push(
-        candidate
-      );
+      if (
+        activeJobCriteria.jobTitle
+      ) {
+        candidate.evaluation =
+          evaluateCandidate(
+            candidate
+          );
+      }
 
-      console.log(
-        "========== CANDIDATE =========="
-      );
-
-      console.log(
-        JSON.stringify(
-          candidate,
-          null,
-          2
-        )
-      );
+      candidates.push(candidate);
 
       console.log(
-        "==============================="
+        "Candidate created:",
+        candidate.candidateId
       );
 
-      res.json({
+      res.status(201).json({
         message:
-          "CV uploaded and processed successfully!",
+          "CV uploaded and processed successfully.",
 
-        candidate:
-          candidate,
+        candidate,
       });
     } catch (error) {
       console.error(
-        "CV processing error:",
+        "CV upload error:",
         error
       );
 
       res.status(500).json({
         message:
-          "Could not process CV",
-
-        error:
-          error.message,
+          error.message ||
+          "Could not process CV.",
       });
     }
   }
 );
 
-// =====================================================
+// ==================================================
 // GET ALL CANDIDATES
-// =====================================================
+// ==================================================
 
 app.get(
   "/api/candidates",
   (req, res) => {
+    const sortedCandidates =
+      [...candidates].sort(
+        (a, b) => {
+          const scoreA =
+            Number(
+              a.evaluation
+                ?.matchScore
+            ) || 0;
+
+          const scoreB =
+            Number(
+              b.evaluation
+                ?.matchScore
+            ) || 0;
+
+          return scoreB - scoreA;
+        }
+      );
+
     res.json({
       candidates:
-        candidates,
+        sortedCandidates,
     });
   }
 );
 
-// =====================================================
-// GET SINGLE CANDIDATE
-// =====================================================
+// ==================================================
+// GET ONE CANDIDATE
+// ==================================================
 
 app.get(
   "/api/candidates/:id",
+
   (req, res) => {
     const candidate =
       candidates.find(
@@ -1017,520 +1861,69 @@ app.get(
       );
 
     if (!candidate) {
-      return res.status(404).json({
-        message:
-          "Candidate not found",
-      });
+      return res
+        .status(404)
+        .json({
+          message:
+            "Candidate not found.",
+        });
     }
 
     res.json({
-      candidate:
-        candidate,
+      candidate,
     });
   }
 );
 
-// =====================================================
-// EVALUATE CANDIDATE
-// =====================================================
+// ==================================================
+// EVALUATE ONE CANDIDATE
+// ==================================================
 
 app.post(
-  "/api/candidates/evaluate",
+  "/api/candidates/:id/evaluate",
+
   (req, res) => {
     try {
-      const {
-        candidate,
-      } = req.body;
-
-      if (!candidate) {
-        return res.status(400).json({
-          message:
-            "Candidate data is required",
-        });
-      }
-
-      const job =
-        activeJobCriteria;
-
-      // =================================================
-      // SKILLS - 40%
-      // =================================================
-
-      const candidateSkills =
-        candidate.skills || [];
-
-      const requiredSkills =
-        job.requiredSkills || [];
-
-      const matchedSkills =
-        requiredSkills.filter(
-          (requiredSkill) =>
-            candidateSkills.some(
-              (candidateSkill) => {
-                const candidateLower =
-                  candidateSkill
-                    .toLowerCase();
-
-                const requiredLower =
-                  requiredSkill
-                    .toLowerCase();
-
-                return (
-                  candidateLower ===
-                    requiredLower ||
-                  candidateLower.includes(
-                    requiredLower
-                  ) ||
-                  requiredLower.includes(
-                    candidateLower
-                  )
-                );
-              }
-            )
-        );
-
-      let skillsScore = 0;
-
       if (
-        requiredSkills.length ===
-        0
+        !activeJobCriteria.jobTitle
       ) {
-        skillsScore = 40;
-      } else {
-        skillsScore =
-          (matchedSkills.length /
-            requiredSkills.length) *
-          40;
+        return res
+          .status(400)
+          .json({
+            message:
+              "Create a job before evaluating candidates.",
+          });
       }
 
-      // =================================================
-      // EXPERIENCE - 25%
-      // =================================================
-
-      const experienceCount =
-        candidate.experience
-          ? candidate.experience
-              .length
-          : 0;
-
-      let experienceScore =
-        0;
-
-      if (
-        experienceCount >= 2
-      ) {
-        experienceScore =
-          25;
-      } else if (
-        experienceCount === 1
-      ) {
-        experienceScore =
-          15;
-      }
-
-      // =================================================
-      // EDUCATION - 15%
-      // =================================================
-
-      let educationScore =
-        0;
-
-      const hasEducation =
-        candidate.education &&
-        candidate.education
-          .length > 0;
-
-      if (hasEducation) {
-        educationScore =
-          15;
-      }
-
-      // =================================================
-      // CERTIFICATIONS - 10%
-      // =================================================
-
-      const mandatoryCertifications =
-        job.mandatoryCertifications ||
-        [];
-
-      const candidateCertifications =
-        candidate.certifications ||
-        [];
-
-      let certificationScore =
-        0;
-
-      let matchedCertifications =
-        [];
-
-      if (
-        mandatoryCertifications.length ===
-        0
-      ) {
-        certificationScore =
-          10;
-      } else {
-        matchedCertifications =
-          mandatoryCertifications.filter(
-            (
-              requiredCertification
-            ) =>
-              candidateCertifications.some(
-                (
-                  candidateCertification
-                ) =>
-                  candidateCertification
-                    .toLowerCase()
-                    .includes(
-                      requiredCertification
-                        .toLowerCase()
-                    )
-              )
-          );
-
-        certificationScore =
-          (matchedCertifications.length /
-            mandatoryCertifications.length) *
-          10;
-      }
-
-      // =================================================
-      // INDUSTRY - 10%
-      // =================================================
-
-      let industryScore =
-        0;
-
-      const cvText =
-        candidate.cvText
-          ? candidate.cvText.toLowerCase()
-          : "";
-
-      const industry =
-        job.industryBackground
-          ? job.industryBackground.toLowerCase()
-          : "";
-
-      if (
-        industry &&
-        cvText.includes(
-          industry
-        )
-      ) {
-        industryScore =
-          10;
-      } else if (
-        cvText.includes(
-          "web development"
-        ) ||
-        cvText.includes(
-          "web developer"
-        ) ||
-        cvText.includes(
-          "software developer"
-        ) ||
-        cvText.includes(
-          "frontend"
-        ) ||
-        cvText.includes(
-          "front-end"
-        ) ||
-        cvText.includes(
-          "backend"
-        ) ||
-        cvText.includes(
-          "back-end"
-        ) ||
-        candidateSkills.length >
-          0
-      ) {
-        industryScore =
-          10;
-      }
-
-      // =================================================
-      // ELIMINATION RULES
-      // =================================================
-
-      const eliminationReasons =
-        [];
-
-      // -----------------------------------------------
-      // Mandatory certification
-      // -----------------------------------------------
-
-      if (
-        mandatoryCertifications.length >
-        0
-      ) {
-        const hasAllCertifications =
-          mandatoryCertifications.every(
-            (
-              requiredCertification
-            ) =>
-              candidateCertifications.some(
-                (
-                  candidateCertification
-                ) =>
-                  candidateCertification
-                    .toLowerCase()
-                    .includes(
-                      requiredCertification
-                        .toLowerCase()
-                    )
-              )
-          );
-
-        if (
-          !hasAllCertifications
-        ) {
-          eliminationReasons.push(
-            "Missing mandatory certification"
-          );
-        }
-      }
-
-      // -----------------------------------------------
-      // Required education
-      // -----------------------------------------------
-
-      if (
-        job.minimumEducation &&
-        !hasEducation
-      ) {
-        eliminationReasons.push(
-          "Required education level not found"
-        );
-      }
-
-      // -----------------------------------------------
-      // Minimum experience
-      // -----------------------------------------------
-
-      if (
-        Number(
-          job.minimumExperience
-        ) > 0 &&
-        experienceCount ===
-          0
-      ) {
-        eliminationReasons.push(
-          "Minimum experience requirement not met"
-        );
-      }
-
-      // =================================================
-      // FINAL SCORE
-      // =================================================
-
-      let totalScore =
-        Math.round(
-          skillsScore +
-            experienceScore +
-            educationScore +
-            certificationScore +
-            industryScore
-        );
-
-      totalScore =
-        Math.min(
-          totalScore,
-          100
-        );
-
-      // =================================================
-      // CATEGORY
-      // =================================================
-
-      let category;
-
-      if (
-        eliminationReasons.length >
-        0
-      ) {
-        category =
-          "Tier 3";
-      } else if (
-        totalScore >= 85
-      ) {
-        category =
-          "Tier 1";
-      } else if (
-        totalScore >= 65
-      ) {
-        category =
-          "Tier 2";
-      } else {
-        category =
-          "Tier 3";
-      }
-
-      // =================================================
-      // EVALUATION MATRIX
-      // =================================================
-
-      const evaluationMatrix = {
-        skills:
-          `${Math.round(
-            skillsScore / 4
-          )}/10`,
-
-        experience:
-          `${Math.round(
-            experienceScore /
-              2.5
-          )}/10`,
-
-        education:
-          `${Math.round(
-            educationScore /
-              1.5
-          )}/10`,
-
-        industry:
-          `${Math.round(
-            industryScore
-          )}/10`,
-
-        certifications:
-          `${Math.round(
-            certificationScore
-          )}/10`,
-      };
-
-      // =================================================
-      // MISSING SKILLS
-      // =================================================
-
-      const missingSkills =
-        requiredSkills.filter(
-          (requiredSkill) =>
-            !matchedSkills.some(
-              (matchedSkill) =>
-                matchedSkill
-                  .toLowerCase() ===
-                requiredSkill
-                  .toLowerCase()
-            )
-        );
-
-      // =================================================
-      // AI ANALYSIS SUMMARY
-      // =================================================
-
-      let justification;
-
-      if (
-        eliminationReasons.length >
-        0
-      ) {
-        justification =
-          `The candidate does not meet one or more mandatory requirements for the ${job.jobTitle} position. ${eliminationReasons.join(
-            ". "
-          )}.`;
-      } else if (
-        totalScore >= 85
-      ) {
-        justification =
-          `Strong match for the ${job.jobTitle} position. The candidate demonstrates strong technical skills, relevant education, and suitable professional experience.`;
-      } else if (
-        totalScore >= 65
-      ) {
-        justification =
-          `Potential match for the ${job.jobTitle} position. The candidate has relevant skills and qualifications, but some areas could be improved.`;
-      } else {
-        justification =
-          `Limited match for the ${job.jobTitle} position. Several required skills or qualifications are missing.`;
-      }
-
-      // =================================================
-      // EVALUATION RESULT
-      // =================================================
-
-      const evaluation = {
-        targetJob:
-          job.jobTitle,
-
-        matchScore:
-          totalScore,
-
-        category:
-          category,
-
-        evaluationMatrix:
-          evaluationMatrix,
-
-        matchedSkills:
-          matchedSkills,
-
-        missingSkills:
-          missingSkills,
-
-        matchedCertifications:
-          matchedCertifications,
-
-        eliminationReasons:
-          eliminationReasons,
-
-        justification:
-          justification,
-      };
-
-      // =================================================
-      // UPDATE CANDIDATE
-      // =================================================
-
-      const index =
-        candidates.findIndex(
+      const candidate =
+        candidates.find(
           (item) =>
             item.candidateId ===
-            candidate.candidateId
+            req.params.id
         );
 
-      if (
-        index !== -1
-      ) {
-        candidates[index] = {
-          ...candidates[index],
-
-          evaluation:
-            evaluation,
-        };
+      if (!candidate) {
+        return res
+          .status(404)
+          .json({
+            message:
+              "Candidate not found.",
+          });
       }
 
-      // =================================================
-      // RESPONSE
-      // =================================================
-
-      console.log(
-        "========== EVALUATION =========="
-      );
-
-      console.log(
-        JSON.stringify(
-          evaluation,
-          null,
-          2
-        )
-      );
-
-      console.log(
-        "================================"
-      );
+      candidate.evaluation =
+        evaluateCandidate(
+          candidate
+        );
 
       res.json({
         message:
-          "Candidate evaluated successfully",
+          "Candidate evaluated successfully.",
+
+        candidate,
 
         evaluation:
-          evaluation,
-
-        candidate: {
-          ...candidate,
-
-          evaluation:
-            evaluation,
-        },
+          candidate.evaluation,
       });
     } catch (error) {
       console.error(
@@ -1540,461 +1933,233 @@ app.post(
 
       res.status(500).json({
         message:
-          "Could not evaluate candidate",
-
-        error:
-          error.message,
+          "Could not evaluate candidate.",
       });
     }
   }
 );
 
-// =====================================================
-// RE-EVALUATE CANDIDATE
-// =====================================================
+// ==================================================
+// EVALUATE ALL CANDIDATES
+// ==================================================
 
 app.post(
-  "/api/candidates/:id/evaluate",
+  "/api/candidates/evaluate-all",
+
   (req, res) => {
     try {
-      const candidate =
-        candidates.find(
-          (item) =>
-            item.candidateId ===
-            req.params.id
+      if (
+        !activeJobCriteria.jobTitle
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Create a job before evaluating candidates.",
+          });
+      }
+
+      const evaluated =
+        candidates.map(
+          (candidate) => {
+            candidate.evaluation =
+              evaluateCandidate(
+                candidate
+              );
+
+            return candidate;
+          }
         );
-
-      if (!candidate) {
-        return res.status(404).json({
-          message:
-            "Candidate not found",
-        });
-      }
-
-      const job =
-        activeJobCriteria;
-
-      // =================================================
-      // SKILLS
-      // =================================================
-
-      const candidateSkills =
-        candidate.skills || [];
-
-      const requiredSkills =
-        job.requiredSkills || [];
-
-      const matchedSkills =
-        requiredSkills.filter(
-          (requiredSkill) =>
-            candidateSkills.some(
-              (candidateSkill) =>
-                candidateSkill
-                  .toLowerCase()
-                  .includes(
-                    requiredSkill
-                      .toLowerCase()
-                  ) ||
-                requiredSkill
-                  .toLowerCase()
-                  .includes(
-                    candidateSkill
-                      .toLowerCase()
-                  )
-            )
-        );
-
-      const skillsScore =
-        requiredSkills.length ===
-        0
-          ? 40
-          : (matchedSkills.length /
-              requiredSkills.length) *
-            40;
-
-      // =================================================
-      // EXPERIENCE
-      // =================================================
-
-      const experienceCount =
-        candidate.experience
-          ? candidate.experience
-              .length
-          : 0;
-
-      let experienceScore =
-        0;
-
-      if (
-        experienceCount >= 2
-      ) {
-        experienceScore =
-          25;
-      } else if (
-        experienceCount === 1
-      ) {
-        experienceScore =
-          15;
-      }
-
-      // =================================================
-      // EDUCATION
-      // =================================================
-
-      const educationScore =
-        candidate.education &&
-        candidate.education.length >
-          0
-          ? 15
-          : 0;
-
-      // =================================================
-      // CERTIFICATIONS
-      // =================================================
-
-      const mandatoryCertifications =
-        job.mandatoryCertifications ||
-        [];
-
-      const candidateCertifications =
-        candidate.certifications ||
-        [];
-
-      let certificationScore =
-        0;
-
-      if (
-        mandatoryCertifications.length ===
-        0
-      ) {
-        certificationScore =
-          10;
-      } else {
-        const matchedCertifications =
-          mandatoryCertifications.filter(
-            (requiredCertification) =>
-              candidateCertifications.some(
-                (candidateCertification) =>
-                  candidateCertification
-                    .toLowerCase()
-                    .includes(
-                      requiredCertification
-                        .toLowerCase()
-                    )
-              )
-          );
-
-        certificationScore =
-          (matchedCertifications.length /
-            mandatoryCertifications.length) *
-          10;
-      }
-
-      // =================================================
-      // INDUSTRY
-      // =================================================
-
-      const cvText =
-        candidate.cvText
-          ? candidate.cvText.toLowerCase()
-          : "";
-
-      let industryScore =
-        0;
-
-      if (
-        cvText.includes(
-          "web development"
-        ) ||
-        cvText.includes(
-          "web developer"
-        ) ||
-        cvText.includes(
-          "frontend"
-        ) ||
-        cvText.includes(
-          "front-end"
-        ) ||
-        cvText.includes(
-          "backend"
-        ) ||
-        cvText.includes(
-          "software developer"
-        ) ||
-        candidateSkills.length >
-          0
-      ) {
-        industryScore =
-          10;
-      }
-
-      // =================================================
-      // ELIMINATION
-      // =================================================
-
-      const eliminationReasons =
-        [];
-
-      if (
-        mandatoryCertifications.length >
-        0
-      ) {
-        const hasAll =
-          mandatoryCertifications.every(
-            (requiredCertification) =>
-              candidateCertifications.some(
-                (candidateCertification) =>
-                  candidateCertification
-                    .toLowerCase()
-                    .includes(
-                      requiredCertification
-                        .toLowerCase()
-                    )
-              )
-          );
-
-        if (!hasAll) {
-          eliminationReasons.push(
-            "Missing mandatory certification"
-          );
-        }
-      }
-
-      if (
-        job.minimumEducation &&
-        (!candidate.education ||
-          candidate.education
-            .length === 0)
-      ) {
-        eliminationReasons.push(
-          "Required education level not found"
-        );
-      }
-
-      if (
-        Number(
-          job.minimumExperience
-        ) > 0 &&
-        experienceCount ===
-          0
-      ) {
-        eliminationReasons.push(
-          "Minimum experience requirement not met"
-        );
-      }
-
-      // =================================================
-      // SCORE
-      // =================================================
-
-      let totalScore =
-        Math.round(
-          skillsScore +
-            experienceScore +
-            educationScore +
-            certificationScore +
-            industryScore
-        );
-
-      totalScore =
-        Math.min(
-          totalScore,
-          100
-        );
-
-      // =================================================
-      // CATEGORY
-      // =================================================
-
-      let category;
-
-      if (
-        eliminationReasons.length >
-        0
-      ) {
-        category =
-          "Tier 3";
-      } else if (
-        totalScore >= 85
-      ) {
-        category =
-          "Tier 1";
-      } else if (
-        totalScore >= 65
-      ) {
-        category =
-          "Tier 2";
-      } else {
-        category =
-          "Tier 3";
-      }
-
-      // =================================================
-      // MATRIX
-      // =================================================
-
-      const evaluationMatrix = {
-        skills:
-          `${Math.round(
-            skillsScore / 4
-          )}/10`,
-
-        experience:
-          `${Math.round(
-            experienceScore /
-              2.5
-          )}/10`,
-
-        education:
-          `${Math.round(
-            educationScore /
-              1.5
-          )}/10`,
-
-        industry:
-          `${Math.round(
-            industryScore
-          )}/10`,
-
-        certifications:
-          `${Math.round(
-            certificationScore
-          )}/10`,
-      };
-
-      // =================================================
-      // MISSING SKILLS
-      // =================================================
-
-      const missingSkills =
-        requiredSkills.filter(
-          (requiredSkill) =>
-            !matchedSkills.some(
-              (matchedSkill) =>
-                matchedSkill
-                  .toLowerCase() ===
-                requiredSkill
-                  .toLowerCase()
-            )
-        );
-
-      // =================================================
-      // SUMMARY
-      // =================================================
-
-      let justification;
-
-      if (
-        eliminationReasons.length >
-        0
-      ) {
-        justification =
-          `The candidate does not meet one or more mandatory requirements for the ${job.jobTitle} position. ${eliminationReasons.join(
-            ". "
-          )}.`;
-      } else if (
-        totalScore >= 85
-      ) {
-        justification =
-          `Strong match for the ${job.jobTitle} position. The candidate demonstrates strong technical skills, relevant education, and suitable professional experience.`;
-      } else if (
-        totalScore >= 65
-      ) {
-        justification =
-          `Potential match for the ${job.jobTitle} position. The candidate has relevant skills and qualifications, but some areas could be improved.`;
-      } else {
-        justification =
-          `Limited match for the ${job.jobTitle} position. Several required skills or qualifications are missing.`;
-      }
-
-      // =================================================
-      // EVALUATION
-      // =================================================
-
-      const evaluation = {
-        targetJob:
-          job.jobTitle,
-
-        matchScore:
-          totalScore,
-
-        category:
-          category,
-
-        evaluationMatrix:
-          evaluationMatrix,
-
-        matchedSkills:
-          matchedSkills,
-
-        missingSkills:
-          missingSkills,
-
-        eliminationReasons:
-          eliminationReasons,
-
-        justification:
-          justification,
-      };
-
-      // =================================================
-      // SAVE
-      // =================================================
-
-      candidate.evaluation =
-        evaluation;
 
       res.json({
         message:
-          "Candidate re-evaluated successfully",
+          `${evaluated.length} candidate(s) evaluated successfully.`,
 
-        candidate:
-          candidate,
-
-        evaluation:
-          evaluation,
+        candidates:
+          evaluated,
       });
     } catch (error) {
       console.error(
-        "Re-evaluation error:",
+        "Evaluate all error:",
         error
       );
 
       res.status(500).json({
         message:
-          "Could not re-evaluate candidate",
-
-        error:
-          error.message,
+          "Could not evaluate candidates.",
       });
     }
   }
 );
 
-// =====================================================
-// GLOBAL ERROR HANDLER
-// =====================================================
+// ==================================================
+// EVALUATE CANDIDATE FROM REQUEST BODY
+// ==================================================
+
+app.post(
+  "/api/candidates/evaluate",
+
+  (req, res) => {
+    try {
+      if (
+        !activeJobCriteria.jobTitle
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Create a job before evaluating candidates.",
+          });
+      }
+
+      const candidate =
+        req.body;
+
+      if (
+        !candidate ||
+        Object.keys(candidate).length === 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Candidate data is required.",
+          });
+      }
+
+      const evaluation =
+        evaluateCandidate(
+          candidate
+        );
+
+      res.json({
+        message:
+          "Candidate evaluated successfully.",
+
+        evaluation,
+      });
+    } catch (error) {
+      console.error(
+        "Evaluation error:",
+        error
+      );
+
+      res.status(500).json({
+        message:
+          "Could not evaluate candidate.",
+      });
+    }
+  }
+);
+
+// ==================================================
+// DELETE ALL CANDIDATES
+// ==================================================
+
+app.delete(
+  "/api/candidates",
+  (req, res) => {
+    try {
+      candidates.length = 0;
+
+      res.json({
+        message:
+          "All candidates deleted successfully.",
+      });
+    } catch (error) {
+      res.status(500).json({
+        message:
+          "Could not delete candidates.",
+      });
+    }
+  }
+);
+
+// ==================================================
+// DELETE ONE CANDIDATE
+// ==================================================
+
+app.delete(
+  "/api/candidates/:id",
+
+  (req, res) => {
+    const index =
+      candidates.findIndex(
+        (candidate) =>
+          candidate.candidateId ===
+          req.params.id
+      );
+
+    if (index === -1) {
+      return res
+        .status(404)
+        .json({
+          message:
+            "Candidate not found.",
+        });
+    }
+
+    const deleted =
+      candidates.splice(
+        index,
+        1
+      );
+
+    res.json({
+      message:
+        "Candidate deleted successfully.",
+
+      candidate:
+        deleted[0],
+    });
+  }
+);
+
+// ==================================================
+// ERROR HANDLER
+// ==================================================
 
 app.use(
-  (error, req, res, next) => {
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
     console.error(
       "Server error:",
       error
     );
 
+    if (
+      error instanceof
+      multer.MulterError
+    ) {
+      return res
+        .status(400)
+        .json({
+          message:
+            error.message,
+        });
+    }
+
     res.status(500).json({
       message:
         error.message ||
-        "Internal server error",
+        "Internal server error.",
     });
   }
 );
 
-// =====================================================
+// ==================================================
 // START SERVER
-// =====================================================
-const PORT = process.env.PORT || 5000;
+// ==================================================
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`AI CV Screening API running on port ${PORT}`);
-});
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      `Server running on port ${PORT}`
+    );
+  }
+);
