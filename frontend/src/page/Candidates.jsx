@@ -72,6 +72,8 @@ function Candidates() {
         ? data.candidates
         : [];
 
+      console.log("Loaded candidates:", candidateList);
+
       setCandidates(candidateList);
     } catch (error) {
       console.error("Candidates error:", error);
@@ -123,28 +125,45 @@ function Candidates() {
   // =====================================================
 
   const getCategory = (candidate) => {
-    return (
+    const category =
       candidate.evaluation?.category ||
       candidate.tier ||
-      "Not evaluated"
-    );
+      "Not evaluated";
+
+    return String(category).trim();
+  };
+
+  // =====================================================
+  // CHECK CATEGORY
+  // =====================================================
+
+  const isTier1 = (candidate) => {
+    return getCategory(candidate)
+      .toLowerCase()
+      .includes("tier 1");
+  };
+
+  const isTier2 = (candidate) => {
+    return getCategory(candidate)
+      .toLowerCase()
+      .includes("tier 2");
+  };
+
+  const isTier3 = (candidate) => {
+    return getCategory(candidate)
+      .toLowerCase()
+      .includes("tier 3");
   };
 
   // =====================================================
   // COUNTS
   // =====================================================
 
-  const tier1Count = candidates.filter(
-    (candidate) => getCategory(candidate) === "Tier 1"
-  ).length;
+  const tier1Count = candidates.filter(isTier1).length;
 
-  const tier2Count = candidates.filter(
-    (candidate) => getCategory(candidate) === "Tier 2"
-  ).length;
+  const tier2Count = candidates.filter(isTier2).length;
 
-  const tier3Count = candidates.filter(
-    (candidate) => getCategory(candidate) === "Tier 3"
-  ).length;
+  const tier3Count = candidates.filter(isTier3).length;
 
   // =====================================================
   // AVERAGE SCORE
@@ -170,15 +189,19 @@ function Candidates() {
   // =====================================================
 
   const getCategoryStyle = (category) => {
-    if (category === "Tier 1") {
+    const normalizedCategory = String(category)
+      .toLowerCase()
+      .trim();
+
+    if (normalizedCategory.includes("tier 1")) {
       return "bg-green-100 text-green-700";
     }
 
-    if (category === "Tier 2") {
+    if (normalizedCategory.includes("tier 2")) {
       return "bg-yellow-100 text-yellow-700";
     }
 
-    if (category === "Tier 3") {
+    if (normalizedCategory.includes("tier 3")) {
       return "bg-red-100 text-red-700";
     }
 
@@ -381,7 +404,9 @@ function Candidates() {
             STATS
         ================================================= */}
 
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:mb-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:mb-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
+
+          {/* TOTAL */}
 
           <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
@@ -395,6 +420,8 @@ function Candidates() {
 
           </div>
 
+          {/* TIER 1 */}
+
           <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
             <p className="text-xs text-gray-500 sm:text-sm">
@@ -407,6 +434,8 @@ function Candidates() {
 
           </div>
 
+          {/* TIER 2 */}
+
           <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
             <p className="text-xs text-gray-500 sm:text-sm">
@@ -416,8 +445,24 @@ function Candidates() {
             <p className="mt-2 text-2xl font-bold text-yellow-600 sm:text-3xl">
               {tier2Count}
             </p>
-            
+
           </div>
+
+          {/* TIER 3 */}
+
+          <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+
+            <p className="text-xs text-gray-500 sm:text-sm">
+              Tier 3
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-red-600 sm:text-3xl">
+              {tier3Count}
+            </p>
+
+          </div>
+
+          {/* AVERAGE SCORE */}
 
           <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
@@ -565,6 +610,7 @@ function Candidates() {
                       >
 
                         <td className="max-w-[220px] px-6 py-5">
+
                           <p className="break-words font-semibold text-gray-900">
                             {candidate.name ||
                               "Unknown Candidate"}
@@ -573,13 +619,16 @@ function Candidates() {
                           <p className="mt-1 break-all text-xs text-gray-400">
                             {candidateId}
                           </p>
+
                         </td>
 
                         <td className="max-w-[240px] px-6 py-5">
+
                           <p className="break-all text-sm text-gray-600">
                             {candidate.email ||
                               "No email"}
                           </p>
+
                         </td>
 
                         <td className="px-6 py-5">
@@ -587,31 +636,37 @@ function Candidates() {
                           <div className="flex max-w-[240px] flex-wrap gap-1">
 
                             {candidate.skills?.length > 0 ? (
+
                               <>
                                 {candidate.skills
                                   .slice(0, 4)
                                   .map((skill) => (
+
                                     <span
                                       key={skill}
                                       className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
                                     >
                                       {skill}
                                     </span>
+
                                   ))}
 
-                                {candidate.skills.length >
-                                  4 && (
+                                {candidate.skills.length > 4 && (
+
                                   <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">
-                                    +
-                                    {candidate.skills.length -
-                                      4}
+                                    +{candidate.skills.length - 4}
                                   </span>
+
                                 )}
+
                               </>
+
                             ) : (
+
                               <span className="text-sm text-gray-400">
                                 No skills
                               </span>
+
                             )}
 
                           </div>
@@ -754,12 +809,14 @@ function Candidates() {
 
                           candidate.skills.map(
                             (skill) => (
+
                               <span
                                 key={skill}
                                 className="max-w-full break-words rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
                               >
                                 {skill}
                               </span>
+
                             )
                           )
 
@@ -784,9 +841,7 @@ function Candidates() {
                       </h3>
 
                       <div className="mt-3">
-                        {renderExperience(
-                          candidate
-                        )}
+                        {renderExperience(candidate)}
                       </div>
 
                     </div>
@@ -800,9 +855,7 @@ function Candidates() {
                       </h3>
 
                       <div className="mt-3">
-                        {renderEducation(
-                          candidate
-                        )}
+                        {renderEducation(candidate)}
                       </div>
 
                     </div>
@@ -816,9 +869,7 @@ function Candidates() {
                       </h3>
 
                       <div className="mt-3">
-                        {renderCertifications(
-                          candidate
-                        )}
+                        {renderCertifications(candidate)}
                       </div>
 
                     </div>
@@ -846,34 +897,8 @@ function Candidates() {
 
         )}
 
-        {/* =================================================
-            TIER 3 INFO
-        ================================================= */}
-
-        {!loading &&
-          candidates.length > 0 &&
-          tier3Count > 0 && (
-
-            <div className="mt-5 rounded-xl bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
-
-              <p className="text-sm text-gray-500">
-                Tier 3 Candidates
-              </p>
-
-              <p className="mt-1 text-2xl font-bold text-red-600">
-                {tier3Count}
-              </p>
-
-              <p className="mt-2 text-xs leading-5 text-gray-500">
-                Candidates with weaker matches or
-                unmet mandatory requirements.
-              </p>
-
-            </div>
-
-          )}
-
       </div>
+
     </div>
   );
 }
