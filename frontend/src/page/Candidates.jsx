@@ -417,10 +417,6 @@ function Candidates() {
               {tier2Count}
             </p>
             
-
-            <p className="mt-2 text-2xl font-bold text-yellow-600 sm:text-3xl">
-              {tier3Count}
-            </p>
           </div>
 
           <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
