@@ -24,26 +24,27 @@ function Candidates() {
 
       console.log("Candidates API URL:", API_URL);
 
-      const response = await fetch(`${API_URL}/api/candidates`);
+      const response = await fetch(
+        `${API_URL}/api/candidates`
+      );
 
       const responseText = await response.text();
 
-      console.log("Candidates response status:", response.status);
-      console.log("Candidates response:", responseText);
+      console.log(
+        "Candidates response status:",
+        response.status
+      );
 
-      // =================================================
-      // EMPTY RESPONSE
-      // =================================================
+      console.log(
+        "Candidates response:",
+        responseText
+      );
 
       if (!responseText || responseText.trim() === "") {
         throw new Error(
           `Backend returned an empty response. Status: ${response.status}`
         );
       }
-
-      // =================================================
-      // PARSE JSON
-      // =================================================
 
       let data;
 
@@ -57,10 +58,6 @@ function Candidates() {
         );
       }
 
-      // =================================================
-      // HTTP ERROR
-      // =================================================
-
       if (!response.ok) {
         throw new Error(
           data.message ||
@@ -68,10 +65,6 @@ function Candidates() {
             `Could not load candidates. Status: ${response.status}`
         );
       }
-
-      // =================================================
-      // SAVE CANDIDATES
-      // =================================================
 
       const candidateList = Array.isArray(data)
         ? data
@@ -138,24 +131,16 @@ function Candidates() {
   };
 
   // =====================================================
-  // TIER 1 COUNT
+  // COUNTS
   // =====================================================
 
   const tier1Count = candidates.filter(
     (candidate) => getCategory(candidate) === "Tier 1"
   ).length;
 
-  // =====================================================
-  // TIER 2 COUNT
-  // =====================================================
-
   const tier2Count = candidates.filter(
     (candidate) => getCategory(candidate) === "Tier 2"
   ).length;
-
-  // =====================================================
-  // TIER 3 COUNT
-  // =====================================================
 
   const tier3Count = candidates.filter(
     (candidate) => getCategory(candidate) === "Tier 3"
@@ -238,24 +223,27 @@ function Candidates() {
 
     return (
       <div className="space-y-3">
-        {candidate.experience.map((experience, index) => (
-          <div
-            key={index}
-            className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4"
-          >
-            <p className="break-words font-semibold text-gray-900">
-              {experience.role || "Not specified"}
-            </p>
+        {candidate.experience.map(
+          (experience, index) => (
+            <div
+              key={index}
+              className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+            >
+              <p className="break-words font-semibold text-gray-900">
+                {experience.role || "Not specified"}
+              </p>
 
-            <p className="mt-1 break-words text-sm text-gray-600">
-              {experience.company || "Not specified"}
-            </p>
+              <p className="mt-1 break-words text-sm text-gray-600">
+                {experience.company || "Not specified"}
+              </p>
 
-            <p className="mt-1 break-words text-xs text-gray-400">
-              {experience.duration || "Duration not found"}
-            </p>
-          </div>
-        ))}
+              <p className="mt-1 break-words text-xs text-gray-400">
+                {experience.duration ||
+                  "Duration not found"}
+              </p>
+            </div>
+          )
+        )}
       </div>
     );
   };
@@ -276,27 +264,30 @@ function Candidates() {
 
       return (
         <div className="space-y-3">
-          {candidate.education.map((education, index) => (
-            <div
-              key={index}
-              className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4"
-            >
-              <p className="break-words text-sm text-gray-700">
-                {typeof education === "string"
-                  ? education
-                  : education.degree ||
-                    education.title ||
-                    "Not specified"}
-              </p>
-            </div>
-          ))}
+          {candidate.education.map(
+            (education, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+              >
+                <p className="break-words text-sm text-gray-700">
+                  {typeof education === "string"
+                    ? education
+                    : education.degree ||
+                      education.title ||
+                      "Not specified"}
+                </p>
+              </div>
+            )
+          )}
         </div>
       );
     }
 
     return (
       <p className="break-words text-sm text-gray-600">
-        {candidate.education || "No education found."}
+        {candidate.education ||
+          "No education found."}
       </p>
     );
   };
@@ -327,7 +318,8 @@ function Candidates() {
             >
               {typeof certification === "string"
                 ? certification
-                : certification.name || "Certification"}
+                : certification.name ||
+                  "Certification"}
             </span>
           )
         )}
@@ -340,7 +332,7 @@ function Candidates() {
   // =====================================================
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gray-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen overflow-x-hidden bg-gray-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
 
       <div className="mx-auto w-full max-w-7xl">
 
@@ -348,35 +340,33 @@ function Candidates() {
             HEADER
         ================================================= */}
 
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-5 sm:mb-8">
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4">
 
-            <div className="min-w-0">
-
+            <div>
               <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
                 Candidates
               </h1>
 
-              <p className="mt-2 text-sm text-gray-500 sm:text-base">
+              <p className="mt-1.5 text-sm leading-5 text-gray-500 sm:mt-2 sm:text-base">
                 View and evaluate all uploaded candidates.
               </p>
-
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:justify-end">
 
               <button
                 onClick={loadCandidates}
                 disabled={loading}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4"
               >
                 {loading ? "Loading..." : "Refresh"}
               </button>
 
               <Link
                 to="/upload-cv"
-                className="w-full rounded-lg bg-black px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
+                className="w-full rounded-lg bg-black px-3 py-2.5 text-center text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto sm:px-4"
               >
                 Upload CV
               </Link>
@@ -391,66 +381,56 @@ function Candidates() {
             STATS
         ================================================= */}
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:mb-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
 
-          {/* Total */}
+          <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
-          <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-
-            <p className="text-sm text-gray-500">
+            <p className="break-words text-xs text-gray-500 sm:text-sm">
               Total Candidates
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-gray-900">
+            <p className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
               {candidates.length}
             </p>
 
           </div>
 
-          {/* Tier 1 */}
+          <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
-          <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500 sm:text-sm">
               Tier 1
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-green-600">
+            <p className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
               {tier1Count}
             </p>
 
           </div>
 
-          {/* Tier 2 */}
+          <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
-          <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500 sm:text-sm">
               Tier 2
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-yellow-600">
+            <p className="mt-2 text-2xl font-bold text-yellow-600 sm:text-3xl">
               {tier2Count}
             </p>
 
           </div>
 
-          {/* Average */}
+          <div className="min-w-0 rounded-xl bg-white p-4 shadow-sm sm:p-6">
 
-          <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
-
-            <p className="text-sm text-gray-500">
+            <p className="break-words text-xs text-gray-500 sm:text-sm">
               Average Score
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-gray-900">
-
+            <p className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
               {averageScore}
 
-              <span className="ml-1 text-base font-normal text-gray-400">
+              <span className="ml-1 text-sm font-normal text-gray-400 sm:text-base">
                 /100
               </span>
-
             </p>
 
           </div>
@@ -462,7 +442,7 @@ function Candidates() {
         ================================================= */}
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 sm:mb-6">
 
             <p className="break-words text-sm font-medium text-red-700">
               {error}
@@ -474,7 +454,7 @@ function Candidates() {
 
             <button
               onClick={loadCandidates}
-              className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-red-700"
+              className="mt-3 w-full rounded-lg bg-red-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-red-700 sm:w-auto"
             >
               Try Again
             </button>
@@ -488,7 +468,7 @@ function Candidates() {
 
         {loading ? (
 
-          <div className="rounded-xl bg-white p-10 text-center shadow-sm">
+          <div className="rounded-xl bg-white p-8 text-center shadow-sm sm:p-10">
 
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
 
@@ -500,21 +480,15 @@ function Candidates() {
 
         ) : candidates.length === 0 ? (
 
-          /* =================================================
-             NO CANDIDATES
-          ================================================= */
-
-          <div className="rounded-xl bg-white p-8 text-center shadow-sm sm:p-12">
+          <div className="rounded-xl bg-white p-6 text-center shadow-sm sm:p-12">
 
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-
-              <span className="text-xl">
+              <span className="text-lg">
                 CV
               </span>
-
             </div>
 
-            <h2 className="mt-5 text-xl font-semibold text-gray-900">
+            <h2 className="mt-5 text-lg font-semibold text-gray-900 sm:text-xl">
               No candidates yet
             </h2>
 
@@ -524,7 +498,7 @@ function Candidates() {
 
             <Link
               to="/upload-cv"
-              className="mt-5 inline-block rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+              className="mt-5 inline-block w-full rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
             >
               Upload CV
             </Link>
@@ -532,10 +506,6 @@ function Candidates() {
           </div>
 
         ) : (
-
-          /* =================================================
-             CANDIDATES
-          ================================================= */
 
           <div className="rounded-xl bg-white shadow-sm">
 
@@ -585,7 +555,8 @@ function Candidates() {
 
                     const score = getScore(candidate);
                     const category = getCategory(candidate);
-                    const candidateId = getCandidateId(candidate);
+                    const candidateId =
+                      getCandidateId(candidate);
 
                     return (
                       <tr
@@ -593,79 +564,66 @@ function Candidates() {
                         className="transition hover:bg-gray-50"
                       >
 
-                        {/* Candidate */}
-
                         <td className="max-w-[220px] px-6 py-5">
-
                           <p className="break-words font-semibold text-gray-900">
-                            {candidate.name || "Unknown Candidate"}
+                            {candidate.name ||
+                              "Unknown Candidate"}
                           </p>
 
                           <p className="mt-1 break-all text-xs text-gray-400">
                             {candidateId}
                           </p>
-
                         </td>
-
-                        {/* Email */}
 
                         <td className="max-w-[240px] px-6 py-5">
-
                           <p className="break-all text-sm text-gray-600">
-                            {candidate.email || "No email"}
+                            {candidate.email ||
+                              "No email"}
                           </p>
-
                         </td>
-
-                        {/* Skills */}
 
                         <td className="px-6 py-5">
 
                           <div className="flex max-w-[240px] flex-wrap gap-1">
 
                             {candidate.skills?.length > 0 ? (
-
                               <>
                                 {candidate.skills
                                   .slice(0, 4)
                                   .map((skill) => (
-
                                     <span
                                       key={skill}
                                       className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
                                     >
                                       {skill}
                                     </span>
-
                                   ))}
 
-                                {candidate.skills.length > 4 && (
-
+                                {candidate.skills.length >
+                                  4 && (
                                   <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">
-                                    +{candidate.skills.length - 4}
+                                    +
+                                    {candidate.skills.length -
+                                      4}
                                   </span>
-
                                 )}
                               </>
-
                             ) : (
-
                               <span className="text-sm text-gray-400">
                                 No skills
                               </span>
-
                             )}
 
                           </div>
 
                         </td>
 
-                        {/* Score */}
-
                         <td className="whitespace-nowrap px-6 py-5">
 
                           <span
-                            className={`font-bold ${getScoreStyle(score)}`}
+                            className={`font-bold ${getScoreStyle(
+                              score
+                            )}`}
                           >
                             {score}
                           </span>
@@ -678,8 +636,6 @@ function Candidates() {
 
                         </td>
 
-                        {/* Category */}
-
                         <td className="whitespace-nowrap px-6 py-5">
 
                           <span
@@ -691,8 +647,6 @@ function Candidates() {
                           </span>
 
                         </td>
-
-                        {/* Action */}
 
                         <td className="whitespace-nowrap px-6 py-5">
 
@@ -716,7 +670,7 @@ function Candidates() {
             </div>
 
             {/* =================================================
-                TABLET + MOBILE
+                MOBILE + TABLET CARDS
             ================================================= */}
 
             <div className="divide-y lg:hidden">
@@ -725,55 +679,56 @@ function Candidates() {
 
                 const score = getScore(candidate);
                 const category = getCategory(candidate);
-                const candidateId = getCandidateId(candidate);
+                const candidateId =
+                  getCandidateId(candidate);
 
                 return (
                   <div
                     key={candidateId}
-                    className="p-5 sm:p-6"
+                    className="p-4 sm:p-6"
                   >
 
-                    {/* Candidate */}
+                    {/* TOP */}
 
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start justify-between gap-3">
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
 
-                        <h3 className="break-words text-lg font-semibold text-gray-900 sm:text-xl">
-                          {candidate.name || "Unknown Candidate"}
+                        <h3 className="break-words text-base font-semibold text-gray-900 sm:text-xl">
+                          {candidate.name ||
+                            "Unknown Candidate"}
                         </h3>
 
-                        <p className="mt-1 break-all text-sm text-gray-500">
-                          {candidate.email || "No email"}
+                        <p className="mt-1 break-all text-xs leading-5 text-gray-500 sm:text-sm">
+                          {candidate.email ||
+                            "No email"}
                         </p>
 
                       </div>
 
-                      {/* Score */}
+                      <div className="shrink-0 text-right">
 
-                      <div className="flex items-center gap-2 sm:shrink-0">
-
-                        <span
-                          className={`text-2xl font-bold ${getScoreStyle(
+                        <p
+                          className={`text-xl font-bold sm:text-2xl ${getScoreStyle(
                             score
                           )}`}
                         >
                           {score}
-                        </span>
+                        </p>
 
                         {score !== "-" && (
-                          <span className="text-sm text-gray-400">
+                          <p className="text-[11px] text-gray-400 sm:text-xs">
                             /100
-                          </span>
+                          </p>
                         )}
 
                       </div>
 
                     </div>
 
-                    {/* Category */}
+                    {/* CATEGORY */}
 
-                    <div className="mt-4">
+                    <div className="mt-3">
 
                       <span
                         className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getCategoryStyle(
@@ -785,28 +740,28 @@ function Candidates() {
 
                     </div>
 
-                    {/* Skills */}
+                    {/* SKILLS */}
 
                     <div className="mt-5">
 
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                         Skills
                       </p>
 
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="mt-2 flex flex-wrap gap-1.5">
 
                         {candidate.skills?.length > 0 ? (
 
-                          candidate.skills.map((skill) => (
-
-                            <span
-                              key={skill}
-                              className="max-w-full break-words rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
-                            >
-                              {skill}
-                            </span>
-
-                          ))
+                          candidate.skills.map(
+                            (skill) => (
+                              <span
+                                key={skill}
+                                className="max-w-full break-words rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
+                              >
+                                {skill}
+                              </span>
+                            )
+                          )
 
                         ) : (
 
@@ -820,51 +775,57 @@ function Candidates() {
 
                     </div>
 
-                    {/* Experience */}
+                    {/* EXPERIENCE */}
 
-                    <div className="mt-6">
+                    <div className="mt-5">
 
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
                         Experience
                       </h3>
 
                       <div className="mt-3">
-                        {renderExperience(candidate)}
+                        {renderExperience(
+                          candidate
+                        )}
                       </div>
 
                     </div>
 
-                    {/* Education */}
+                    {/* EDUCATION */}
 
-                    <div className="mt-6">
+                    <div className="mt-5">
 
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
                         Education
                       </h3>
 
                       <div className="mt-3">
-                        {renderEducation(candidate)}
+                        {renderEducation(
+                          candidate
+                        )}
                       </div>
 
                     </div>
 
-                    {/* Certifications */}
+                    {/* CERTIFICATIONS */}
 
-                    <div className="mt-6">
+                    <div className="mt-5">
 
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
                         Certifications
                       </h3>
 
                       <div className="mt-3">
-                        {renderCertifications(candidate)}
+                        {renderCertifications(
+                          candidate
+                        )}
                       </div>
 
                     </div>
 
-                    {/* Action */}
+                    {/* VIEW DETAILS */}
 
-                    <div className="mt-6">
+                    <div className="mt-5">
 
                       <Link
                         to={`/candidates/${candidateId}`}
@@ -893,7 +854,7 @@ function Candidates() {
           candidates.length > 0 &&
           tier3Count > 0 && (
 
-            <div className="mt-6 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+            <div className="mt-5 rounded-xl bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
 
               <p className="text-sm text-gray-500">
                 Tier 3 Candidates
@@ -904,7 +865,8 @@ function Candidates() {
               </p>
 
               <p className="mt-2 text-xs leading-5 text-gray-500">
-                Candidates with weaker matches or unmet mandatory requirements.
+                Candidates with weaker matches or
+                unmet mandatory requirements.
               </p>
 
             </div>
