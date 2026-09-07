@@ -125,6 +125,13 @@ function Dashboard() {
         "Tier 2"
     ).length;
 
+  const weakMatches =
+    candidates.filter(
+      (candidate) =>
+        candidate.evaluation?.category ===
+        "Tier 3"
+    ).length;
+
   const evaluatedCandidates =
     candidates.filter(
       (candidate) =>
@@ -210,7 +217,7 @@ function Dashboard() {
       )}
 
       {/* STATISTICS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 
         {/* TOTAL */}
         <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -242,6 +249,17 @@ function Dashboard() {
 
           <p className="mt-2 text-3xl font-bold text-yellow-600">
             {potentialMatches}
+          </p>
+        </div>
+
+        {/* TIER 3 */}
+        <div className="rounded-xl bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">
+            Weak Matches
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-red-600">
+            {weakMatches}
           </p>
         </div>
 
