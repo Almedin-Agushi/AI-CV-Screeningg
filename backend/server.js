@@ -65,7 +65,7 @@ function extractSection(text, headings) {
   return result.join("\n");
 }
 
-// Experience extractor (improved)
+// Experience extractor
 function extractExperience(text) {
   const section = extractSection(text, ["Experience","Work Experience","Professional Experience","Employment History","EXPERIENCE"]);
   if (!section) return [];
@@ -90,7 +90,7 @@ function extractExperience(text) {
   return experiences;
 }
 
-// Education extractor (improved)
+// Education extractor
 function extractEducation(text) {
   const section = extractSection(text, ["Education","Academic Background","Academic Education","EDUCATION"]);
   if (!section) return [];
@@ -115,7 +115,7 @@ function extractEducation(text) {
   return education;
 }
 
-// Upload CV endpoint
+// Upload CV endpoint with fallback
 app.post("/api/candidates/upload", upload.single("cv"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No CV file uploaded." });
@@ -130,19 +130,47 @@ app.post("/api/candidates/upload", upload.single("cv"), async (req, res) => {
     const candidate = {
       candidateId: `candidate-${Date.now()}`,
       name: req.file.originalname,
-      skills: [], // add skill extraction if needed
+      skills: [],
       experience: extractExperience(cvText),
       education: extractEducation(cvText),
       cvText
     };
+
+    // Fallback if parsing fails
+    if (!cvText) {
+      candidate.experience = [];
+      candidate.education = [];
+      candidate.cvText = "";
+    }
+
     candidates.push(candidate);
     res.status(201).json({ message: "CV uploaded successfully.", candidate });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Upload failed." });
+    res.status(200).json({
+      message: "CV uploaded but parsing failed.",
+      candidate: {
+        candidateId: `candidate-${Date.now()}`,
+        name: req.file ? req.file.originalname : "Unknown",
+        skills: [],
+        experience: [],
+        education: [],
+        cvText: ""
+      }
+    });
   }
+});
+
+// Get all candidates
+app.get("/api/candidates", (req, res) => {
+  res.json({ candidates });
 });
 
 // Root
 app.get("/", (req, res) => res.json({ message: "AI CV Screening API is running" }));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Dummy readers (implement or import your own)
+async function readPdfFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
+async function readDocxFile(filePath) { const result = await mammoth.extractRawText({ path: filePath }); return result.value; }
+function readTxtFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
