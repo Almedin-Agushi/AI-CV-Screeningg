@@ -40,82 +40,24 @@ function cleanText(text) {
     .trim();
 }
 
-// Section extractor
-function extractSection(text, headings) {
-  const lines = cleanText(text).split("\n").map(l => l.trim()).filter(Boolean);
-  const normalizedHeadings = headings.map(h => h.toLowerCase());
-  let startIndex = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const current = lines[i].toLowerCase();
-    if (normalizedHeadings.some(h => current.startsWith(h))) {
-      startIndex = i + 1;
-      break;
-    }
-  }
-  if (startIndex === -1) return "";
-
-  const stopHeadings = ["experience","education","skills","projects","certifications","summary"];
-  const result = [];
-  for (let i = startIndex; i < lines.length; i++) {
-    const current = lines[i].toLowerCase();
-    if (stopHeadings.includes(current)) break;
-    result.push(lines[i]);
-  }
-  return result.join("\n");
-}
+// Dummy readers (replace with real parsers if needed)
+async function readPdfFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
+async function readDocxFile(filePath) { const result = await mammoth.extractRawText({ path: filePath }); return result.value; }
+function readTxtFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
 
 // Experience extractor
 function extractExperience(text) {
-  const section = extractSection(text, ["Experience","Work Experience","Professional Experience","Employment History","EXPERIENCE"]);
-  if (!section) return [];
-  const lines = section.split("\n").map(l => l.trim()).filter(Boolean);
-  const experiences = [];
-  let current = null;
-  const dateRegex = /\b(19|20)\d{2}\s*[-–]\s*(19|20)\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}\b/gi;
-
-  for (const line of lines) {
-    const dateMatch = line.match(dateRegex);
-    if (/developer|engineer|intern|manager|designer|assistant|teacher/i.test(line)) {
-      if (current) experiences.push(current);
-      current = { position: line, company: "", description: "", dates: dateMatch ? dateMatch[0] : "" };
-      continue;
-    }
-    if (!current) current = { position: "Experience", company: "", description: "", dates: dateMatch ? dateMatch[0] : "" };
-    if (dateMatch && !current.dates) { current.dates = dateMatch[0]; continue; }
-    if (!current.company && line.length < 100) { current.company = line; continue; }
-    current.description += (current.description ? " " : "") + line;
-  }
-  if (current) experiences.push(current);
-  return experiences;
+  if (!text) return [];
+  return [{ position: "Experience", company: "Not parsed", description: text.slice(0,100), dates: "" }];
 }
 
 // Education extractor
 function extractEducation(text) {
-  const section = extractSection(text, ["Education","Academic Background","Academic Education","EDUCATION"]);
-  if (!section) return [];
-  const lines = section.split("\n").map(l => l.trim()).filter(Boolean);
-  const education = [];
-  let current = null;
-  const dateRegex = /\b(19|20)\d{2}\s*[-–]\s*(19|20)\d{2}\b/;
-
-  for (const line of lines) {
-    const isDegree = /bachelor|master|phd|doctorate|degree|computer science|information technology/i.test(line);
-    const dateMatch = line.match(dateRegex);
-    if (isDegree) {
-      if (current) education.push(current);
-      current = { degree: line, institution: "", dates: dateMatch ? dateMatch[0] : "" };
-      continue;
-    }
-    if (!current) current = { degree: line, institution: "", dates: dateMatch ? dateMatch[0] : "" };
-    if (dateMatch && !current.dates) { current.dates = dateMatch[0]; continue; }
-    if (!current.institution) current.institution = line;
-  }
-  if (current) education.push(current);
-  return education;
+  if (!text) return [];
+  return [{ degree: "Education", institution: "Not parsed", dates: "" }];
 }
 
-// Upload CV endpoint with fallback
+// Upload CV
 app.post("/api/candidates/upload", upload.single("cv"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No CV file uploaded." });
@@ -133,15 +75,9 @@ app.post("/api/candidates/upload", upload.single("cv"), async (req, res) => {
       skills: [],
       experience: extractExperience(cvText),
       education: extractEducation(cvText),
-      cvText
+      cvText,
+      evaluation: null
     };
-
-    // Fallback if parsing fails
-    if (!cvText) {
-      candidate.experience = [];
-      candidate.education = [];
-      candidate.cvText = "";
-    }
 
     candidates.push(candidate);
     res.status(201).json({ message: "CV uploaded successfully.", candidate });
@@ -154,7 +90,8 @@ app.post("/api/candidates/upload", upload.single("cv"), async (req, res) => {
         skills: [],
         experience: [],
         education: [],
-        cvText: ""
+        cvText: "",
+        evaluation: null
       }
     });
   }
@@ -165,12 +102,43 @@ app.get("/api/candidates", (req, res) => {
   res.json({ candidates });
 });
 
+// Get one candidate
+app.get("/api/candidates/:id", (req, res) => {
+  const candidate = candidates.find(c => c.candidateId === req.params.id);
+  if (!candidate) return res.status(404).json({ message: "Candidate not found." });
+  res.json({ candidate });
+});
+
+// Create job
+app.post("/api/jobs", (req, res) => {
+  const { jobTitle, requiredSkills = [], minimumExperience = 0, minimumEducation = "", industryBackground = "", mandatoryCertifications = [] } = req.body;
+  if (!jobTitle) return res.status(400).json({ message: "Job title is required." });
+  activeJobCriteria = { jobTitle, requiredSkills, minimumExperience, minimumEducation, industryBackground, mandatoryCertifications };
+  res.status(201).json({ message: "Job created successfully.", job: activeJobCriteria });
+});
+
+// Get current job
+app.get("/api/jobs/current", (req, res) => {
+  res.json({ job: activeJobCriteria });
+});
+
+// Evaluate candidate by ID
+app.post("/api/candidates/:id/evaluate", (req, res) => {
+  const candidate = candidates.find(c => c.candidateId === req.params.id);
+  if (!candidate) return res.status(404).json({ message: "Candidate not found." });
+
+  // Dummy evaluation logic
+  const evaluation = {
+    matchScore: 100,
+    category: "Tier 1",
+    justification: "Strong match for the job."
+  };
+
+  candidate.evaluation = evaluation;
+  res.json({ message: "Candidate evaluated successfully.", candidate, evaluation });
+});
+
 // Root
 app.get("/", (req, res) => res.json({ message: "AI CV Screening API is running" }));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-// Dummy readers (implement or import your own)
-async function readPdfFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
-async function readDocxFile(filePath) { const result = await mammoth.extractRawText({ path: filePath }); return result.value; }
-function readTxtFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
