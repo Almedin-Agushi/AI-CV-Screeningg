@@ -11,16 +11,26 @@ function UploadCV() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
+  // =====================================================
+  // FILE SELECT
+  // =====================================================
 
-    if (!file) return;
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
 
     setSelectedFile(file);
     setCandidate(null);
     setEvaluation(null);
     setMessage("");
   };
+
+  // =====================================================
+  // SAFE RESPONSE READER
+  // =====================================================
 
   const getResponseData = async (response) => {
     const text = await response.text();
@@ -42,6 +52,10 @@ function UploadCV() {
     }
   };
 
+  // =====================================================
+  // UPLOAD CV
+  // =====================================================
+
   const handleUpload = async () => {
     if (!selectedFile) {
       setMessage("Please choose a CV first.");
@@ -54,7 +68,9 @@ function UploadCV() {
       .toLowerCase();
 
     if (!["pdf", "docx", "txt"].includes(extension)) {
-      setMessage("Only PDF, DOCX and TXT files are supported.");
+      setMessage(
+        "Only PDF, DOCX and TXT files are supported."
+      );
       return;
     }
 
@@ -64,42 +80,43 @@ function UploadCV() {
       setCandidate(null);
       setEvaluation(null);
 
-      // ================================
-      // 1. UPLOAD CV
-      // ================================
+      // =================================================
+      // 1. UPLOAD
+      // =================================================
 
-    const handleUpload = async () => {
-  if (!selectedFile) {
-    alert("Please choose a CV first.");
-    return;
-  }
+      const formData = new FormData();
 
-  const formData = new FormData();
-  formData.append("cv", selectedFile);
+      formData.append("cv", selectedFile);
 
-  try {
-    console.log("Uploading to:", `${import.meta.env.VITE_API_URL}/api/candidates/upload`);
-    console.log("Selected file:", selectedFile.name);
+      const uploadUrl =
+        `${API_URL}/api/candidates/upload`;
 
-    const uploadResponse = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/candidates/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+      console.log("Uploading to:", uploadUrl);
+      console.log(
+        "Selected file:",
+        selectedFile.name
+      );
 
-    const data = await uploadResponse.json();
-    console.log("Response:", data);
-  } catch (error) {
-    console.error("Upload failed:", error);
-  }
-};
+      const uploadResponse = await fetch(
+        uploadUrl,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
+      console.log(
+        "Upload status:",
+        uploadResponse.status
+      );
 
-      const uploadData = await getResponseData(uploadResponse);
+      const uploadData =
+        await getResponseData(uploadResponse);
 
-      console.log("Upload response:", uploadData);
+      console.log(
+        "Upload response:",
+        uploadData
+      );
 
       if (!uploadResponse.ok) {
         throw new Error(
@@ -114,17 +131,14 @@ function UploadCV() {
         );
       }
 
-      const uploadedCandidate = uploadData.candidate;
+      const uploadedCandidate =
+        uploadData.candidate;
 
       setCandidate(uploadedCandidate);
 
-      setMessage(
-        "CV uploaded successfully. Evaluating candidate..."
-      );
-
-      // ================================
-      // 2. EVALUATE
-      // ================================
+      // =================================================
+      // 2. CHECK CANDIDATE ID
+      // =================================================
 
       if (!uploadedCandidate.candidateId) {
         throw new Error(
@@ -132,23 +146,42 @@ function UploadCV() {
         );
       }
 
-      console.log(
-        "Evaluating:",
-        uploadedCandidate.candidateId
+      setMessage(
+        "CV uploaded successfully. Evaluating candidate..."
       );
 
-      const evaluationResponse = await fetch(
-        `${API_URL}/api/candidates/${uploadedCandidate.candidateId}/evaluate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      // =================================================
+      // 3. EVALUATE
+      // =================================================
+
+      const evaluateUrl =
+        `${API_URL}/api/candidates/${uploadedCandidate.candidateId}/evaluate`;
+
+      console.log(
+        "Evaluating:",
+        evaluateUrl
+      );
+
+      const evaluationResponse =
+        await fetch(
+          evaluateUrl,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "Evaluation status:",
+        evaluationResponse.status
       );
 
       const evaluationData =
-        await getResponseData(evaluationResponse);
+        await getResponseData(
+          evaluationResponse
+        );
 
       console.log(
         "Evaluation response:",
@@ -168,17 +201,25 @@ function UploadCV() {
         );
       }
 
-      setEvaluation(evaluationData.evaluation);
+      setEvaluation(
+        evaluationData.evaluation
+      );
 
+      // Update candidate with evaluation
       if (evaluationData.candidate) {
-        setCandidate(evaluationData.candidate);
+        setCandidate(
+          evaluationData.candidate
+        );
       }
 
       setMessage(
         "CV uploaded and evaluated successfully!"
       );
     } catch (error) {
-      console.error("Upload/Evaluation error:", error);
+      console.error(
+        "Upload/Evaluation error:",
+        error
+      );
 
       setMessage(
         `Upload failed: ${error.message}`
@@ -188,10 +229,15 @@ function UploadCV() {
     }
   };
 
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
 
       {/* HEADER */}
+
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
           Upload CV
@@ -203,7 +249,8 @@ function UploadCV() {
       </div>
 
       {/* UPLOAD CARD */}
-      <div className="w-full max-w-5xl rounded-xl bg-white p-4 shadow-sm sm:p-6 lg:p-8">
+
+      <div className="w-full max-w-4xl rounded-xl bg-white p-4 shadow-sm sm:p-6 lg:p-8">
 
         <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
           Candidate CV
@@ -212,6 +259,8 @@ function UploadCV() {
         <p className="mt-1 text-sm text-gray-500">
           Supported formats: PDF, DOCX and TXT.
         </p>
+
+        {/* FILE INPUT */}
 
         <div className="mt-6 flex flex-col gap-4 md:flex-row">
 
@@ -229,14 +278,18 @@ function UploadCV() {
             disabled={loading || !selectedFile}
             className="w-full rounded-lg bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto md:whitespace-nowrap"
           >
-            {loading ? "Processing..." : "Upload & Evaluate"}
+            {loading
+              ? "Processing..."
+              : "Upload & Evaluate"}
           </button>
 
         </div>
 
         {/* SELECTED FILE */}
+
         {selectedFile && (
           <div className="mt-4 rounded-lg bg-gray-50 p-4">
+
             <p className="text-sm font-medium text-gray-700">
               Selected file
             </p>
@@ -244,25 +297,31 @@ function UploadCV() {
             <p className="mt-1 break-all text-sm text-gray-500">
               {selectedFile.name}
             </p>
+
           </div>
         )}
 
         {/* MESSAGE */}
+
         {message && (
           <div className="mt-4 rounded-lg bg-gray-50 p-4">
+
             <p className="break-words text-sm font-medium text-gray-700">
               {message}
             </p>
+
           </div>
         )}
 
       </div>
 
-      {/* RESULT */}
-      {candidate && (
-        <div className="mt-6 w-full max-w-5xl rounded-xl bg-white p-4 shadow-sm sm:p-6 lg:p-8">
+      {/* CANDIDATE RESULT */}
 
-          {/* CANDIDATE HEADER */}
+      {candidate && (
+        <div className="mt-6 w-full max-w-4xl rounded-xl bg-white p-4 shadow-sm sm:mt-8 sm:p-6 lg:p-8">
+
+          {/* HEADER */}
+
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
 
             <div className="min-w-0">
@@ -272,40 +331,33 @@ function UploadCV() {
               </p>
 
               <h2 className="mt-1 break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                {candidate.name || "Unknown Candidate"}
+                {candidate.name ||
+                  "Unknown Candidate"}
               </h2>
 
-              <p className="mt-2 break-all text-sm text-gray-600">
-                <strong>Email:</strong>{" "}
-                {candidate.email || "Not found"}
+              <p className="mt-1 break-all text-sm text-gray-500">
+                {candidate.email ||
+                  "No email found"}
               </p>
 
-              <p className="mt-1 text-sm text-gray-600">
-                <strong>Phone:</strong>{" "}
-                {candidate.phone || "Not found"}
-              </p>
+              {candidate.phone && (
+                <p className="mt-1 text-sm text-gray-500">
+                  {candidate.phone}
+                </p>
+              )}
 
-              <p className="mt-1 break-all text-sm text-gray-600">
-                <strong>LinkedIn:</strong>{" "}
-                {candidate.linkedin ? (
-                  <a
-                    href={candidate.linkedin}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
-                    View LinkedIn
-                  </a>
-                ) : (
-                  "Not found"
-                )}
-              </p>
+              {candidate.linkedin && (
+                <p className="mt-1 break-all text-sm text-gray-500">
+                  {candidate.linkedin}
+                </p>
+              )}
 
             </div>
 
             {/* SCORE */}
+
             {evaluation && (
-              <div className="w-full rounded-xl bg-gray-100 px-6 py-4 text-center sm:w-auto sm:min-w-[150px]">
+              <div className="w-full rounded-xl bg-gray-100 px-5 py-4 text-center sm:w-auto sm:min-w-[140px]">
 
                 <p className="text-xs text-gray-500">
                   Match Score
@@ -313,12 +365,9 @@ function UploadCV() {
 
                 <p className="mt-1 text-3xl font-bold text-gray-900">
                   {evaluation.matchScore}
-                  <span className="text-base text-gray-400">
-                    /100
-                  </span>
                 </p>
 
-                <p className="mt-1 text-sm font-semibold text-gray-700">
+                <p className="mt-1 text-xs font-medium text-gray-500">
                   {evaluation.category}
                 </p>
 
@@ -328,6 +377,7 @@ function UploadCV() {
           </div>
 
           {/* SKILLS */}
+
           <div className="mt-8">
 
             <h3 className="text-lg font-semibold text-gray-900">
@@ -336,22 +386,23 @@ function UploadCV() {
 
             <div className="mt-3 flex flex-wrap gap-2">
 
-              {Array.isArray(candidate.skills) &&
-              candidate.skills.length > 0 ? (
+              {candidate.skills?.length > 0 ? (
 
-                candidate.skills.map((skill, index) => (
-                  <span
-                    key={`${skill}-${index}`}
-                    className="rounded-full bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700"
-                  >
-                    {skill}
-                  </span>
-                ))
+                candidate.skills.map(
+                  (skill, index) => (
+                    <span
+                      key={`${skill}-${index}`}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {skill}
+                    </span>
+                  )
+                )
 
               ) : (
 
                 <p className="text-sm text-gray-500">
-                  No skills found.
+                  No skills found
                 </p>
 
               )}
@@ -361,135 +412,164 @@ function UploadCV() {
           </div>
 
           {/* EXPERIENCE */}
+
           <div className="mt-8">
 
             <h3 className="text-lg font-semibold text-gray-900">
               Experience
             </h3>
 
-            <div className="mt-3 space-y-4">
+            {Array.isArray(
+              candidate.experience
+            ) &&
+            candidate.experience.length > 0 ? (
 
-              {Array.isArray(candidate.experience) &&
-              candidate.experience.length > 0 ? (
+              <div className="mt-4 space-y-4">
 
-                candidate.experience.map((experience, index) => (
+                {candidate.experience.map(
+                  (experience, index) => (
 
-                  <div
-                    key={index}
-                    className="rounded-lg border border-gray-200 p-4"
-                  >
+                    <div
+                      key={index}
+                      className="rounded-lg border border-gray-200 p-4"
+                    >
 
-                    <p className="font-semibold text-gray-900">
-                      {experience.role || "Role not found"}
-                    </p>
+                      <h4 className="font-semibold text-gray-900">
+                        {experience.position ||
+                          "Experience"}
+                      </h4>
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      {experience.company || "Company not found"}
-                    </p>
+                      {experience.company && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {experience.company}
+                        </p>
+                      )}
 
-                    <p className="mt-1 text-xs text-gray-400">
-                      {experience.duration || "Duration not found"}
-                    </p>
+                      {experience.dates && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          {experience.dates}
+                        </p>
+                      )}
 
-                  </div>
+                      {experience.description && (
+                        <p className="mt-3 text-sm leading-6 text-gray-600">
+                          {experience.description}
+                        </p>
+                      )}
 
-                ))
+                    </div>
 
-              ) : (
+                  )
+                )}
 
-                <p className="text-sm text-gray-500">
-                  No experience found.
-                </p>
+              </div>
 
-              )}
+            ) : (
 
-            </div>
+              <p className="mt-2 text-sm text-gray-500">
+                No experience found.
+              </p>
+
+            )}
 
           </div>
 
           {/* EDUCATION */}
+
           <div className="mt-8">
 
             <h3 className="text-lg font-semibold text-gray-900">
               Education
             </h3>
 
-            <div className="mt-3 space-y-4">
+            {Array.isArray(
+              candidate.education
+            ) &&
+            candidate.education.length > 0 ? (
 
-              {Array.isArray(candidate.education) &&
-              candidate.education.length > 0 ? (
+              <div className="mt-4 space-y-4">
 
-                candidate.education.map((education, index) => (
+                {candidate.education.map(
+                  (education, index) => (
 
-                  <div
-                    key={index}
-                    className="rounded-lg border border-gray-200 p-4"
-                  >
+                    <div
+                      key={index}
+                      className="rounded-lg border border-gray-200 p-4"
+                    >
 
-                    <p className="font-semibold text-gray-900">
-                      {education.degree || "Degree not found"}
-                    </p>
+                      <h4 className="font-semibold text-gray-900">
+                        {education.degree ||
+                          "Education"}
+                      </h4>
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      {education.institution || "Institution not found"}
-                    </p>
+                      {education.institution && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {education.institution}
+                        </p>
+                      )}
 
-                    <p className="mt-1 text-xs text-gray-400">
-                      {education.duration || "Duration not found"}
-                    </p>
+                      {education.dates && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          {education.dates}
+                        </p>
+                      )}
 
-                  </div>
+                    </div>
 
-                ))
+                  )
+                )}
 
-              ) : (
+              </div>
 
-                <p className="text-sm text-gray-500">
-                  No education found.
-                </p>
+            ) : (
 
-              )}
+              <p className="mt-2 text-sm text-gray-500">
+                No education found.
+              </p>
 
-            </div>
+            )}
 
           </div>
 
           {/* CERTIFICATIONS */}
+
           <div className="mt-8">
 
             <h3 className="text-lg font-semibold text-gray-900">
               Certifications
             </h3>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            {candidate.certifications?.length > 0 ? (
 
-              {Array.isArray(candidate.certifications) &&
-              candidate.certifications.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
 
-                candidate.certifications.map(
+                {candidate.certifications.map(
                   (certification, index) => (
+
                     <span
                       key={`${certification}-${index}`}
-                      className="rounded-full bg-gray-100 px-3 py-2 text-sm text-gray-700"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
                     >
                       {certification}
                     </span>
+
                   )
-                )
+                )}
 
-              ) : (
+              </div>
 
-                <p className="text-sm text-gray-500">
-                  No certifications found.
-                </p>
+            ) : (
 
-              )}
+              <p className="mt-2 text-sm text-gray-500">
+                No certifications found.
+              </p>
 
-            </div>
+            )}
 
           </div>
 
           {/* EVALUATION */}
+
           {evaluation && (
             <div className="mt-8 border-t border-gray-200 pt-8">
 
@@ -498,6 +578,7 @@ function UploadCV() {
               </h3>
 
               {/* MATRIX */}
+
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 
                 {Object.entries(
@@ -513,7 +594,7 @@ function UploadCV() {
                       {key}
                     </p>
 
-                    <p className="mt-2 text-2xl font-bold text-gray-900">
+                    <p className="mt-2 text-xl font-bold text-gray-900">
                       {value}/10
                     </p>
 
@@ -524,6 +605,7 @@ function UploadCV() {
               </div>
 
               {/* MATCHED SKILLS */}
+
               <div className="mt-6">
 
                 <h4 className="font-medium text-gray-900">
@@ -536,12 +618,14 @@ function UploadCV() {
 
                     evaluation.matchedSkills.map(
                       (skill, index) => (
+
                         <span
                           key={`${skill}-${index}`}
                           className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
                         >
                           {skill}
                         </span>
+
                       )
                     )
 
@@ -558,6 +642,7 @@ function UploadCV() {
               </div>
 
               {/* MISSING SKILLS */}
+
               <div className="mt-6">
 
                 <h4 className="font-medium text-gray-900">
@@ -570,12 +655,14 @@ function UploadCV() {
 
                     evaluation.missingSkills.map(
                       (skill, index) => (
+
                         <span
                           key={`${skill}-${index}`}
                           className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
                         >
                           {skill}
                         </span>
+
                       )
                     )
 
@@ -592,6 +679,7 @@ function UploadCV() {
               </div>
 
               {/* ELIMINATION */}
+
               {evaluation.eliminationReasons?.length > 0 && (
 
                 <div className="mt-6 rounded-lg bg-red-50 p-5">
@@ -617,6 +705,7 @@ function UploadCV() {
               )}
 
               {/* SUMMARY */}
+
               <div className="mt-6 rounded-lg bg-gray-50 p-5">
 
                 <h4 className="font-medium text-gray-900">
