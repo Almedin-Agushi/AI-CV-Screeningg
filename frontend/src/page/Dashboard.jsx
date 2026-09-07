@@ -168,10 +168,10 @@ function Dashboard() {
   // =====================================================
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-5 lg:p-8">
 
       {/* HEADER */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
           Dashboard
         </h1>
@@ -183,26 +183,28 @@ function Dashboard() {
 
       {/* CURRENT JOB */}
       {job && (
-        <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-5 rounded-xl bg-white p-4 shadow-sm sm:mb-6 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Active Job
               </p>
 
-              <h2 className="mt-1 text-xl font-semibold text-gray-900">
+              <h2 className="mt-1 break-words text-lg font-semibold text-gray-900 sm:text-xl">
                 {job.jobTitle}
               </h2>
             </div>
 
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 sm:max-w-md">
               <span className="font-medium text-gray-700">
                 Required Skills:
               </span>{" "}
-              {job.requiredSkills?.length
-                ? job.requiredSkills.join(", ")
-                : "None"}
+              <span className="break-words">
+                {job.requiredSkills?.length
+                  ? job.requiredSkills.join(", ")
+                  : "None"}
+              </span>
             </div>
 
           </div>
@@ -211,65 +213,65 @@ function Dashboard() {
 
       {/* ERROR */}
       {error && (
-        <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+        <div className="mb-5 rounded-lg bg-red-50 p-4 text-sm text-red-600 sm:mb-6">
           {error}
         </div>
       )}
 
       {/* STATISTICS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5">
 
         {/* TOTAL */}
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Total Candidates
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-gray-900">
+          <p className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
             {totalCandidates}
           </p>
         </div>
 
         {/* TIER 1 */}
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Strong Matches
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-green-600">
+          <p className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
             {strongMatches}
           </p>
         </div>
 
         {/* TIER 2 */}
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Potential Matches
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-yellow-600">
+          <p className="mt-2 text-2xl font-bold text-yellow-600 sm:text-3xl">
             {potentialMatches}
           </p>
         </div>
 
         {/* TIER 3 */}
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Weak Matches
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-red-600">
+          <p className="mt-2 text-2xl font-bold text-red-600 sm:text-3xl">
             {weakMatches}
           </p>
         </div>
 
         {/* AVERAGE */}
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs text-gray-500 sm:text-sm">
             Average Score
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-blue-600">
+          <p className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
             {averageScore !== null
               ? `${averageScore}%`
               : "—"}
@@ -279,12 +281,12 @@ function Dashboard() {
       </div>
 
       {/* CANDIDATES */}
-      <div className="mt-6 rounded-xl bg-white p-5 shadow-sm">
+      <div className="mt-5 rounded-xl bg-white p-4 shadow-sm sm:mt-6 sm:p-5">
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
               Candidates
             </h2>
 
@@ -296,7 +298,7 @@ function Dashboard() {
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 sm:w-auto"
           >
             {loading
               ? "Loading..."
@@ -315,7 +317,7 @@ function Dashboard() {
         ) : candidates.length === 0 ? (
 
           /* EMPTY */
-          <div className="mt-8 rounded-lg bg-gray-50 py-10 text-center">
+          <div className="mt-6 rounded-lg bg-gray-50 px-4 py-10 text-center sm:mt-8">
             <h3 className="text-lg font-semibold text-gray-900">
               No candidates yet
             </h3>
@@ -328,8 +330,7 @@ function Dashboard() {
         ) : (
 
           /* TABLE */
-          <div className="mt-6 overflow-x-auto">
-
+          <div className="mt-5 overflow-x-auto sm:mt-6">
             <table className="w-full min-w-[700px] text-left">
 
               <thead>
@@ -431,7 +432,6 @@ function Dashboard() {
               </tbody>
 
             </table>
-
           </div>
         )}
 
