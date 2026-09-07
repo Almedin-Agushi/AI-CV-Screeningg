@@ -4,6 +4,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import mammoth from "mammoth";
+import pdfParse from "pdf-parse";   // <-- libraria për PDF
 import { fileURLToPath } from "url";
 
 const app = express();
@@ -40,18 +41,27 @@ function cleanText(text) {
     .trim();
 }
 
-// Dummy readers (replace with real parsers if needed)
-async function readPdfFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
-async function readDocxFile(filePath) { const result = await mammoth.extractRawText({ path: filePath }); return result.value; }
-function readTxtFile(filePath) { return fs.readFileSync(filePath, "utf8"); }
-
-// Experience extractor
-function extractExperience(text) {
-  if (!text) return [];
-  return [{ position: "Experience", company: "Not parsed", description: text.slice(0,100), dates: "" }];
+// Readers
+async function readPdfFile(filePath) {
+  const dataBuffer = fs.readFileSync(filePath);
+  const data = await pdfParse(dataBuffer);
+  return data.text;
+}
+async function readDocxFile(filePath) {
+  const result = await mammoth.extractRawText({ path: filePath });
+  return result.value || "";
+}
+function readTxtFile(filePath) {
+  return fs.readFileSync(filePath, "utf8");
 }
 
-// Education extractor
+// Experience extractor (simplified)
+function extractExperience(text) {
+  if (!text) return [];
+  return [{ position: "Experience", company: "Not parsed", description: text.slice(0,150), dates: "" }];
+}
+
+// Education extractor (simplified)
 function extractEducation(text) {
   if (!text) return [];
   return [{ degree: "Education", institution: "Not parsed", dates: "" }];
