@@ -68,23 +68,34 @@ function UploadCV() {
       // 1. UPLOAD CV
       // ================================
 
-      const formData = new FormData();
-      formData.append("cv", selectedFile);
+    const handleUpload = async () => {
+  if (!selectedFile) {
+    alert("Please choose a CV first.");
+    return;
+  }
 
-      console.log(
-        "Uploading to:",
-        `${API_URL}/api/candidates/upload`
-      );
+  const formData = new FormData();
+  formData.append("cv", selectedFile);
 
-      console.log("Selected file:", selectedFile.name);
+  try {
+    console.log("Uploading to:", `${import.meta.env.VITE_API_URL}/api/candidates/upload`);
+    console.log("Selected file:", selectedFile.name);
 
-      const uploadResponse = await fetch(
-        `${API_URL}/api/candidates/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+    const uploadResponse = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/candidates/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await uploadResponse.json();
+    console.log("Response:", data);
+  } catch (error) {
+    console.error("Upload failed:", error);
+  }
+};
+
 
       const uploadData = await getResponseData(uploadResponse);
 
