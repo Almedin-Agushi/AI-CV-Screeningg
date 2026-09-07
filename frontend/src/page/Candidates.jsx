@@ -302,7 +302,7 @@ function Candidates() {
           STATS
       ================================================= */}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 
         {/* Total */}
 
@@ -342,6 +342,20 @@ function Candidates() {
 
           <p className="mt-2 text-3xl font-bold text-yellow-600">
             {tier2Count}
+          </p>
+
+        </div>
+
+        {/* Tier 3 */}
+
+        <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
+
+          <p className="text-sm text-gray-500">
+            Tier 3
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-red-600">
+            {tier3Count}
           </p>
 
         </div>
